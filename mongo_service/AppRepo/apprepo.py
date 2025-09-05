@@ -1,4 +1,3 @@
-
 from typing import Optional, List
 from bson import ObjectId
 from .models import AgentConfig
@@ -11,7 +10,6 @@ class AppRepoDAO:
         self.db = db
 
     async def insert(self, agent: AgentConfig) -> str:
-        # Check for existing agent_id or name
         existing = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({
             "$or": [
                 {"agent_id": agent.agent_id},
@@ -44,7 +42,6 @@ class AppRepoDAO:
         return result.modified_count > 0
 
     async def delete(self, agent_id: str) -> bool:
-        """Soft delete = mark as retired"""
         result = await self.db[AppRepoDAO.COLLECTION_NAME].update_one(
             {"_id": ObjectId(agent_id)},
             {"$set": {"status": "retired", "updated_at": datetime.utcnow()}}

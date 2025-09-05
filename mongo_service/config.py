@@ -12,13 +12,12 @@ class MongoDB:
         if self.client is None:
             mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
             
-            # Enhanced connection options for MongoDB Atlas
             connection_options ={
-    "retryWrites": True,
-    "w": "majority",
-    "connectTimeoutMS": 60000,
-    "socketTimeoutMS": 60000,
-}   
+                "retryWrites": True,
+                "w": "majority",
+                "connectTimeoutMS": 60000,
+                "socketTimeoutMS": 60000,
+            }   
             try:
                 self.client = AsyncIOMotorClient(mongo_uri, **connection_options)
                 self.db = self.client.get_database(os.getenv("MONGO_DB_NAME", "mydatabase"))
@@ -40,7 +39,6 @@ class MongoDB:
             return False
             
         try:
-            # Test with a longer timeout
             await self.client.admin.command('ping', maxTimeMS=30000)
             print("MongoDB connection test successful!")
             return True

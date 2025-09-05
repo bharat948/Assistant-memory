@@ -2,6 +2,7 @@ import asyncio
 from dotenv import load_dotenv
 from mongo_service.AppRepo.apprepo import AppRepoDAO
 from mongo_service.config import mongo_db, get_database
+from mongo_service.AppRepo.service import AppRepoService
 
 load_dotenv()
 
@@ -18,7 +19,7 @@ async def main():
     
     print("\nAttempting to get database instance...")
     db = await get_database()
-    if db is not None:  # Fixed: Use 'is not None' instead of truthiness check
+    if db is not None:
         print(f"Successfully got database: {db.name}")
         
         # Optional: Test a simple database operation
@@ -32,8 +33,6 @@ async def main():
 
     print("\nClosing MongoDB connection...")
     await mongo_db.close()
-
-from mongo_service.AppRepo.service import AppRepoService
 
 async def test():
     # Register new agent
