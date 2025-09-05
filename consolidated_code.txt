@@ -1,0 +1,880 @@
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\consolidate_project.py
+========================================
+
+import os
+import shutil
+
+def delete_unwanted_dirs(root_path):
+    """
+    Deletes '__pycache__' directories from the specified path.
+    """
+    for root, dirs, files in os.walk(root_path, topdown=True):
+        # Remove '__pycache__' from the list of directories to traverse
+        if '__pycache__' in dirs:
+            try:
+                shutil.rmtree(os.path.join(root, '__pycache__'))
+                print(f"Deleted: {os.path.join(root, '__pycache__')}")
+            except OSError as e:
+                print(f"Error deleting {os.path.join(root, '__pycache__')}: {e}")
+            dirs.remove('__pycache__')
+
+
+def consolidate_files(root_path, exceptions, output_file):
+    """
+    Consolidates the content of files in a directory into a single file,
+    excluding specified exceptions.
+    """
+    with open(output_file, 'w', encoding='utf-8', errors='ignore') as outfile:
+        for root, dirs, files in os.walk(root_path):
+            # Skip the 'myenv' directory if it somehow still exists
+            if 'myenv' in dirs and os.path.join(root, 'myenv') == os.path.join(root_path, 'myenv'):
+                dirs.remove('myenv')
+
+            for file in files:
+                if file not in exceptions and file != os.path.basename(output_file) and file != '.env':
+                    file_path = os.path.join(root, file)
+                    try:
+                        outfile.write(f"{'='*40}\n")
+                        outfile.write(f"File: {file_path}\n")
+                        outfile.write(f"{'='*40}\n\n")
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as infile:
+                            outfile.write(infile.read())
+                        outfile.write("\n\n")
+                    except Exception as e:
+                        outfile.write(f"Could not read file: {file_path}. Error: {e}\n\n")
+
+def main():
+    """
+    Main function to drive the script.
+    """
+    folder_path = input("Enter the path of the folder to process: ")
+    if not os.path.isdir(folder_path):
+        print("Error: The provided path is not a valid directory.")
+        return
+
+    exceptions_str = input("Enter file names to exclude (comma-separated, e.g., file1.txt,file2.py): ")
+    exceptions = [item.strip() for item in exceptions_str.split(',')]
+
+    consolidated_filename = "consolidated_code.txt"
+    output_file_path = os.path.join(os.getcwd(), consolidated_filename)
+
+    print("\nStep 1: Deleting unwanted directories...")
+    delete_unwanted_dirs(folder_path)
+
+    print("\nStep 2: Consolidating files...")
+    consolidate_files(folder_path, exceptions, output_file_path)
+
+    print(f"\nProcess complete. All files have been consolidated into '{output_file_path}'")
+
+if __name__ == "__main__":
+    main()
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\test_connection.py
+========================================
+
+import asyncio
+from dotenv import load_dotenv
+from mongo_service.AppRepo.apprepo import AppRepoDAO
+from mongo_service.config import mongo_db, get_database
+
+load_dotenv()
+
+async def main():
+    print("Attempting to connect to MongoDB...")
+    await mongo_db.connect()
+    
+    print("\nTesting MongoDB connection...")
+    if await mongo_db.test_connection():
+        print("Connection test passed!")
+    else:
+        print("Connection test failed!")
+        return  # Exit early if connection fails
+    
+    print("\nAttempting to get database instance...")
+    db = await get_database()
+    if db is not None:  # Fixed: Use 'is not None' instead of truthiness check
+        print(f"Successfully got database: {db.name}")
+        
+        # Optional: Test a simple database operation
+        try:
+            collections = await db.list_collection_names()
+            print(f"Available collections: {collections}")
+        except Exception as e:
+            print(f"Error listing collections: {e}")
+    else:
+        print("Failed to get database instance.")
+
+    print("\nClosing MongoDB connection...")
+    await mongo_db.close()
+
+from mongo_service.AppRepo.service import AppRepoService
+
+async def test():
+    # Register new agent
+    mongo_db = await get_database()
+    apprepo_dao = AppRepoService(AppRepoDAO(mongo_db))
+    agent_data = {
+        "agent_id": "some-unique-id",
+        "name": "InsightScribeOrchestrator",
+        "agent_type": "super_agent",
+        "description": "The primary conversational AI companion for healthcare BI",
+        "created_by": "system_admin",
+        "llm_config": {
+            "model": "gpt-4.1-mini",
+            "temperature": 0.7,
+            "max_tokens": 4000
+        },
+        "allowed_tool_ids":["get_cube_metadata", "execute_bi_query"],
+        "allowed_roles": ["admin", "compliance_officer"],
+        "dependencies": {
+            "allowed_tool_names": ["ExecuteBIQueryTool"],
+            "allowed_sub_agent_names": ["QueryGeneratorAgent"]
+        }
+    }
+    agent_id = await apprepo_dao.register_agent(agent_data=agent_data)
+
+    print("New agent created:", agent_id)
+
+    # Fetch by agent_id
+    agent_by_id = await apprepo_dao.fetch_agent_by_id("some-unique-id")
+    print("\nFetched by agent_id:")
+    print(agent_by_id)
+
+    # Fetch by name
+    agent_by_name = await apprepo_dao.fetch_agent_by_name("InsightScribeOrchestrator")
+    print("\nFetched by name:")
+    print(agent_by_name)
+
+    # List all agents
+    all_agents = await apprepo_dao.list_agents()
+    print("\nList all agents:")
+    for agent in all_agents:
+        print(agent)
+
+    # Update agent
+    update_data = {
+        "description": "Updated description for InsightScribeOrchestrator",
+        "status": "active"
+    }
+    update_result = await apprepo_dao.update_agent("some-unique-id", update_data)
+    print("\nUpdate result:", update_result)
+
+    # Fetch again to verify update
+    updated_agent = await apprepo_dao.fetch_agent_by_id("some-unique-id")
+    print("\nUpdated agent:")
+    print(updated_agent)
+
+    
+if __name__ == "__main__":
+    asyncio.run(test())
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\Agent-core\agent.py
+========================================
+
+# app/core/agent.py
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+from llm import LLM
+from src.services.tool_loader import tool_loader
+class Agent:
+    def __init__(
+        self,
+        agent_id: str,
+        name: str,
+        agent_type: str,
+        description: str,
+        version: int,
+        status: str,
+        created_by: str,
+        llm_config: Dict[str, Any],
+        system_prompt_template: str,
+        allowed_roles: List[str],
+        dependencies: Dict[str, List[str]],
+        allowed_tool_ids: List[str], # Added this parameter
+        output_schema: Optional[Dict[str, Any]] = None,
+    ):
+        self.agent_id = agent_id
+        self.name = name
+        self.agent_type = agent_type
+        self.description = description
+        self.version = version
+        self.status = status
+        self.created_by = created_by
+        # self.llm_config = llm_config
+        self.system_prompt_template = system_prompt_template
+        self.allowed_roles = allowed_roles
+        self.dependencies = dependencies
+        self.output_schema = output_schema
+        
+        # Use the new allowed_tool_ids parameter
+        instantiated_tools = tool_loader.get_allowed_tools(allowed_tool_ids)
+        llm_signatures = tool_loader.get_llm_tool_signatures(instantiated_tools)
+        
+        self.llm = LLM(
+            model=llm_config.get("model", "gpt-4o-mini"),
+            temperature=llm_config.get("temperature", 0.7),
+            max_tokens=llm_config.get("max_tokens", 4000),
+            tools=llm_signatures, # Pass tool signatures to LLM
+            system_instruction=self.system_prompt_template # Pass system prompt as system_instruction
+        )
+        self.created_at = datetime.utcnow()
+        # Runtime attributes
+        self.tools = instantiated_tools # Store instantiated tools
+        self.sub_agents = []  # will be populated later
+
+    def __repr__(self):
+        return f"<Agent name={self.name}, type={self.agent_type}, status={self.status}>"
+
+    def is_active(self):
+        return self.status == "active"
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\Agent-core\agent_init.py
+========================================
+
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from mongo_service.AppRepo.apprepo import AppRepoDAO
+from mongo_service.AppRepo.service import AppRepoService
+from agent import Agent
+from mongo_service.config import MongoDB
+mongo_db = MongoDB()
+
+async def get_database():
+    if mongo_db.db is None:
+        await mongo_db.connect()
+    return mongo_db.db
+
+class AgentInitializer:
+    @staticmethod
+    async def init_agent(agent_id: str = None, agent_name: str = None) -> Agent:
+        if not agent_id and not agent_name:
+            raise ValueError("Either agent_id or agent_name must be provided")
+
+        db = await get_database()
+        dao = AppRepoDAO(db)
+        service = AppRepoService(dao)
+
+        # Fetch config from AppRepo
+        if agent_id:
+            config = await service.fetch_agent_by_id(agent_id)
+        else:
+            config = await service.fetch_agent_by_name(agent_name)
+
+        if not config:
+            raise ValueError("Agent not found")
+
+        agent = Agent(
+            agent_id=str(config.agent_id),
+            name=config.name,
+            agent_type=config.agent_type,
+            description=config.description,
+            version=config.version,
+            status=config.status,
+            created_by=config.created_by,
+            llm_config=config.llm_config.dict() if config.llm_config else {},
+            system_prompt_template=config.system_prompt_template,
+            allowed_roles=config.allowed_roles,
+            dependencies=config.dependencies.dict() if config.dependencies else {},
+            output_schema=config.output_schema,
+            allowed_tool_ids=config.allowed_tool_ids or [],
+        )
+
+        # TODO (future): resolve dependencies
+        # - Fetch tools from ToolRegistryDAO
+        # - Fetch sub-agents via recursive AgentInitializer.init_agent
+
+        return agent
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\Agent-core\llm.py
+========================================
+
+# app/core/llm.py
+from typing import List, Dict, Any,Optional
+from openai import AsyncOpenAI
+
+class LLM:
+    def __init__(self, model: str, temperature: float = 0.7, max_tokens: int = 4000, tools: Optional[List[Dict[str, Any]]] = None, system_instruction: Optional[str] = None):
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.tools = tools
+        self.system_instruction = system_instruction
+
+        # Initialize OpenAI client (reads OPENAI_API_KEY from env)
+        self.client = AsyncOpenAI()
+
+    async def chat(self, messages: List[Dict[str, str]]) -> str:
+        """
+        messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
+        """
+        # Ensure all message content is a string, handling potential None values
+        processed_messages = []
+        if self.system_instruction:
+            processed_messages.append({"role": "system", "content": self.system_instruction})
+
+        for message in messages:
+            if 'content' in message and message['content'] is None:
+                message['content'] = ""  # Replace None with an empty string
+            processed_messages.append(message)
+
+        # Prepare arguments for chat completion
+        chat_completion_args = {
+            "model": self.model,
+            "messages": processed_messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens
+        }
+
+        if self.tools:
+            chat_completion_args["tools"] = self.tools
+
+        response = await self.client.chat.completions.create(**chat_completion_args)
+        print("LLM Response:", response)
+        # OpenAI's message.content can be None if the model chooses to output a tool_call or function_call
+        # In such cases, we should return an empty string or handle it appropriately.
+        # For this fix, we'll return an empty string if content is None.
+        return response.choices[0].message.content or ""
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\Agent-core\test.py
+========================================
+
+from agent_init import AgentInitializer
+
+async def test_agent_initializer():
+    # Initialize by name
+    agent = await AgentInitializer.init_agent(agent_name="InsightScribeOrchestrator")
+    print(agent)
+
+    if agent.is_active():
+        print(f"Agent {agent.name} is ready to use with model {agent.llm_config['model']}")
+
+async def test_agent_with_llm():
+    agent = await AgentInitializer.init_agent(agent_name="InsightScribeOrchestrator")
+
+    # Use LLM
+    response = await agent.llm.chat([
+        {"role": "system", "content": agent.system_prompt_template},
+        {"role": "user", "content": "Get all the cube metadata.Using the provided tools, list all the cube metadata available in the system."}
+    ])
+
+    print("Agent Response:", response)
+import asyncio
+
+if __name__ == "__main__":
+    asyncio.run(test_agent_with_llm())
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\mongo_service\config.py
+========================================
+
+import os
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import ConnectionFailure
+
+class MongoDB:
+    client: AsyncIOMotorClient = None
+    db = None
+    
+    async def connect(self):
+        from dotenv import load_dotenv
+        load_dotenv()
+        if self.client is None:
+            mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+            
+            # Enhanced connection options for MongoDB Atlas
+            connection_options ={
+    "retryWrites": True,
+    "w": "majority",
+    "connectTimeoutMS": 60000,
+    "socketTimeoutMS": 60000,
+}   
+            try:
+                self.client = AsyncIOMotorClient(mongo_uri, **connection_options)
+                self.db = self.client.get_database(os.getenv("MONGO_DB_NAME", "mydatabase"))
+                print("MongoDB client created successfully!")
+            except Exception as e:
+                print(f"Failed to create MongoDB client: {e}")
+                raise
+
+    async def close(self):
+        if self.client:
+            self.client.close()
+            self.client = None
+            self.db = None
+            print("MongoDB connection closed.")
+
+    async def test_connection(self):
+        if not self.client:
+            print("No client available for connection test")
+            return False
+            
+        try:
+            # Test with a longer timeout
+            await self.client.admin.command('ping', maxTimeMS=30000)
+            print("MongoDB connection test successful!")
+            return True
+        except ConnectionFailure as e:
+            print(f"MongoDB connection test failed: {e}")
+            return False
+        except Exception as e:
+            print(f"Unexpected error during connection test: {e}")
+            return False
+
+mongo_db = MongoDB()
+
+async def get_database():
+    if mongo_db.db is None:
+        await mongo_db.connect()
+    return mongo_db.db
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\mongo_service\__init__.py
+========================================
+
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\mongo_service\AppRepo\apprepo.py
+========================================
+
+
+from typing import Optional, List
+from bson import ObjectId
+from .models import AgentConfig
+from datetime import datetime
+
+class AppRepoDAO:
+    COLLECTION_NAME = "apprepo"
+
+    def __init__(self, db):
+        self.db = db
+
+    async def insert(self, agent: AgentConfig) -> str:
+        # Check for existing agent_id or name
+        existing = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({
+            "$or": [
+                {"agent_id": agent.agent_id},
+                {"name": agent.name}
+            ]
+        })
+        if existing:
+            raise ValueError(f"Agent with agent_id '{agent.agent_id}' or name '{agent.name}' already exists.")
+        result = await self.db[AppRepoDAO.COLLECTION_NAME].insert_one(agent.dict(by_alias=True))
+        return str(result.inserted_id)
+
+    async def get_by_id(self, agent_id: str) -> Optional[AgentConfig]:
+        doc = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({"agent_id": agent_id})
+        return AgentConfig(**doc) if doc else None
+
+    async def get_by_name(self, name: str) -> Optional[AgentConfig]:
+        doc = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({"name": name})
+        return AgentConfig(**doc) if doc else None
+
+    async def list_all(self, status: Optional[str] = None) -> List[AgentConfig]:
+        query = {"status": status} if status else {}
+        cursor = self.db[AppRepoDAO.COLLECTION_NAME].find(query)
+        return [AgentConfig(**doc) async for doc in cursor]
+
+    async def update(self, agent_id: str, update_data: dict) -> bool:
+        result = await self.db[AppRepoDAO.COLLECTION_NAME].update_one(
+            {"agent_id": agent_id},
+            {"$set": {**update_data, "updated_at": datetime.utcnow()}}
+        )
+        return result.modified_count > 0
+
+    async def delete(self, agent_id: str) -> bool:
+        """Soft delete = mark as retired"""
+        result = await self.db[AppRepoDAO.COLLECTION_NAME].update_one(
+            {"_id": ObjectId(agent_id)},
+            {"$set": {"status": "retired", "updated_at": datetime.utcnow()}}
+        )
+        return result.modified_count > 0
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\mongo_service\AppRepo\models.py
+========================================
+
+# app/models/agent_config.py
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field
+from datetime import datetime
+
+
+class LLMConfig(BaseModel):
+    model: str
+    temperature: float
+    max_tokens: int
+
+
+class Dependencies(BaseModel):
+    allowed_tool_names: List[str]
+    allowed_sub_agent_names: List[str]
+
+
+class AgentConfig(BaseModel):
+    _id: Optional[str] = None  # MongoDB's internal id, optional
+    agent_id: str
+    name: str
+    agent_type: str  # "super_agent" | "sub_agent"
+    description: Optional[str]
+    version: int = 1
+    status: str = "draft"  # "active", "draft", "retired"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: Optional[str]
+    tags: List[str] = []
+
+    llm_config: Optional[LLMConfig]
+    system_prompt_template: Optional[str] = None
+    allowed_roles: List[str] = []
+    allowed_tool_ids:List[str] = []
+    dependencies: Optional[Dependencies]
+    output_schema: Optional[Dict[str, Any]] = None
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\mongo_service\AppRepo\service.py
+========================================
+
+
+from typing import Optional, List
+from bson import ObjectId
+from .apprepo import AppRepoDAO
+from .models import AgentConfig
+from mongo_service.config import get_database
+from datetime import datetime
+
+
+class AppRepoService:
+    def __init__(self, dao: AppRepoDAO):
+        self.dao = dao
+
+    async def register_agent(self, agent_data: dict) -> str:
+        agent = AgentConfig(**agent_data)
+        return await self.dao.insert(agent)
+
+    async def fetch_agent_by_name(self, name: str) -> AgentConfig:
+        return await self.dao.get_by_name(name)
+
+    async def fetch_agent_by_id(self, agent_id: str) -> AgentConfig:
+        return await self.dao.get_by_id(agent_id)
+
+    async def list_agents(self, status: str = None):
+        return await self.dao.list_all(status=status)
+
+    async def update_agent(self, agent_id: str, update_data: dict) -> bool:
+        return await self.dao.update(agent_id, update_data)
+
+    async def retire_agent(self, agent_id: str) -> bool:
+        return await self.dao.delete(agent_id)
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\mongo_service\AppRepo\__init__.py
+========================================
+
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\src\test_tools.py
+========================================
+
+import asyncio
+from src.services.tool_loader import tool_loader
+
+async def main():
+    print("--- Testing Tool Module ---")
+
+    # Simulate allowed tool IDs from an AppRepo configuration
+    allowed_tool_ids = ["get_cube_metadata", "execute_bi_query"]
+
+    # Get instantiated tool objects
+    instantiated_tools = tool_loader.get_allowed_tools(allowed_tool_ids)
+    print(f"\nInstantiated Tools: {list(instantiated_tools.keys())}")
+
+    # Get LLM tool signatures
+    llm_signatures = tool_loader.get_llm_tool_signatures(instantiated_tools)
+    print("\nLLM Tool Signatures:")
+    for signature in llm_signatures:
+        print(f"- {signature['function']['name']}: {signature['function']['description']}")
+        print(f"  Parameters: {signature['function']['parameters']}")
+
+    # Demonstrate calling a tool
+    print("\n--- Executing GetCubeMetadataTool ---")
+    get_cube_metadata_tool = instantiated_tools.get("get_cube_metadata")
+    if get_cube_metadata_tool:
+        try:
+            result = await get_cube_metadata_tool.run(cube_id="sales_data_cube")
+            print(f"Tool Result Summary: {result.summary}")
+            print(f"Tool Result Data: {result.data}")
+        except Exception as e:
+            print(f"Error executing tool: {e}")
+    else:
+        print("GetCubeMetadataTool not found.")
+
+    print("\n--- Executing ExecuteBIQueryTool (successful) ---")
+    execute_bi_query_tool = instantiated_tools.get("execute_bi_query")
+    if execute_bi_query_tool:
+        try:
+            result = await execute_bi_query_tool.run(cube_id="sales_data_cube", query_string="SELECT FROM sales_data_cube WHERE Provider = 'Provider A'")
+            print(f"Tool Result Summary: {result.summary}")
+            print(f"Tool Result Data: {result.data}")
+        except Exception as e:
+            print(f"Error executing tool: {e}")
+    else:
+        print("ExecuteBIQueryTool not found.")
+
+    print("\n--- Executing ExecuteBIQueryTool (simulated error) ---")
+    if execute_bi_query_tool:
+        try:
+            result = await execute_bi_query_tool.run(cube_id="sales_data_cube", query_string="SELECT FROM sales_data_cube WHERE error = 'true'")
+            print(f"Tool Result Summary: {result.summary}")
+            print(f"Tool Result Data: {result.data}")
+        except ValueError as e:
+            print(f"Caught expected error: {e}")
+        except Exception as e:
+            print(f"Error executing tool: {e}")
+    else:
+        print("ExecuteBIQueryTool not found.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\src\__init__.py
+========================================
+
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\src\services\tool_loader.py
+========================================
+
+from typing import List, Dict, Any
+
+from src.tools.base import BaseTool
+from src.tools.registry import TOOL_REGISTRY
+
+class ToolLoader:
+    """
+    A service that acts as the bridge between the AppRepo configuration
+    and the self-contained tool module.
+    """
+    def get_allowed_tools(self, allowed_tool_ids: List[str]) -> Dict[str, BaseTool]:
+        """
+        Given a list of tool unique IDs from an AppRepo configuration, this method
+        looks them up in the central TOOL_REGISTRY and returns a dictionary of
+        instantiated, ready-to-use tool objects.
+
+        Args:
+            allowed_tool_ids: A list of strings, e.g., ["get_cube_metadata", "execute_bi_query"].
+
+        Returns:
+            A dictionary mapping the tool name to its instantiated class object.
+        """
+        instantiated_tools: Dict[str, BaseTool] = {}
+        for tool_id in allowed_tool_ids:
+            tool_class = TOOL_REGISTRY.get(tool_id)
+            if tool_class:
+                # Instantiate the tool class
+                instantiated_tools[tool_id] = tool_class()
+            else:
+                # Log a warning if a configured tool is not found in the registry.
+                # This helps diagnose configuration mismatches.
+                print(f"Warning: Tool '{tool_id}' is configured in AppRepo but was not found in the Tool Registry.")
+        
+        return instantiated_tools
+
+    def get_llm_tool_signatures(self, tools: Dict[str, BaseTool]) -> List[Dict[str, Any]]:
+        """
+        Takes a dictionary of instantiated tools and generates a list of their
+        JSON Schema signatures. This list is in the precise format required by
+        modern LLMs for their tool-calling functionality.
+
+        This is the critical "binding" step that informs the model of the
+        capabilities it has been granted for a given session.
+
+        Args:
+            tools: A dictionary of tool names to instantiated BaseTool objects.
+
+        Returns:
+            A list of JSON Schema dictionaries representing the function signatures.
+        """
+        return [tool.get_signature() for tool in tools.values()]
+
+# Create a singleton instance for easy, consistent access throughout the application.
+tool_loader = ToolLoader()
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\src\tools\base.py
+========================================
+
+from abc import ABC, abstractmethod
+from pydantic import BaseModel
+from typing import Type, Dict, Any, List
+
+class ToolResult(BaseModel):
+    """
+    A standardized data structure for returning the result of a tool's execution.
+    This ensures that the agent orchestrator receives a predictable output format.
+    """
+    data: Dict[str, Any] | List[Dict[str, Any]]
+    summary: str = "Tool executed successfully."
+
+class BaseTool(ABC):
+    """
+    Abstract Base Class for all agent tools.
+
+    This class enforces a standard interface for defining a tool's:
+    1.  `name`: A unique, machine-readable identifier.
+    2.  `description`: A natural language description for the LLM to understand its purpose.
+    3.  `args_schema`: A Pydantic model defining the input arguments and their types.
+    4.  `run`: The core asynchronous execution logic.
+    """
+    name: str
+    description: str
+    args_schema: Type[BaseModel]
+
+    @abstractmethod
+    async def run(self, **kwargs) -> ToolResult:
+        """
+        The main execution method for the tool. This method must be implemented
+        by all concrete tool classes. It receives arguments as keyword arguments
+        that have been validated against the `args_schema`.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def get_signature(cls) -> Dict[str, Any]:
+        """
+        Generates an LLM-compatible JSON Schema dictionary representing the
+        tool's function signature. This is used to bind the tool to the model
+        at the time of agent initialization.
+        """
+        # Pydantic's .schema() method creates a JSON Schema from the model
+        schema = cls.args_schema.schema()
+        
+        # Format the schema into the structure expected by most LLM tool-calling APIs
+        return {
+            "type": "function",
+            "function": {
+                "name": cls.name,
+                "description": cls.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": schema.get("properties", {}),
+                    "required": schema.get("required", []),
+                },
+            },
+        }
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\src\tools\bi_tools.py
+========================================
+
+import random
+from pydantic import BaseModel, Field
+
+from src.tools.base import BaseTool, ToolResult
+
+# --- 1. Definition for the 'get_cube_metadata' Tool ---
+
+class GetCubeMetadataArgs(BaseModel):
+    """Defines the input arguments for the GetCubeMetadataTool."""
+    cube_id: str = Field(..., description="The unique identifier of the BI cube to inspect.")
+
+class GetCubeMetadataTool(BaseTool):
+    """A tool to retrieve the schema (dimensions and measures) of a BI cube."""
+    name = "get_cube_metadata"
+    description = "Returns the available dimensions and measures for a BI cube. Use this to understand the data structure before building a query."
+    args_schema = GetCubeMetadataArgs
+    
+    async def run(self, cube_id: str) -> ToolResult:
+        """Simulates an API call to fetch cube metadata."""
+        print(f"--- TOOL EXECUTING: {self.name} ---")
+        print(f"    Params: cube_id='{cube_id}'")
+        
+        # In a real system, this would be an async httpx call to your Java API
+        mock_data = {
+            "cube_id": cube_id,
+            "dimensions": ["ProviderNPI", "ClaimStatus", "ServiceDate", "PayerType"],
+            "measures": ["ClaimCount", "AmountPaid", "DenialRate"]
+        }
+        
+        return ToolResult(
+            data=mock_data,
+            summary=f"Successfully retrieved metadata for cube '{cube_id}'. Found 4 dimensions and 3 measures."
+        )
+
+
+# --- 2. Definition for the 'execute_bi_query' Tool ---
+
+class ExecuteBIQueryArgs(BaseModel):
+    """Defines the input arguments for the ExecuteBIQueryTool."""
+    cube_id: str = Field(..., description="The ID of the cube to query.")
+    query_string: str = Field(..., description="A complete and valid MDX or SQL query to execute against the cube.")
+
+class ExecuteBIQueryTool(BaseTool):
+    """A tool to run a query against the BI backend and get data."""
+    name = "execute_bi_query"
+    description = "Executes a BI query (e.g., MDX) against a specified cube and returns the analytical results."
+    args_schema = ExecuteBIQueryArgs
+
+    async def run(self, cube_id: str, query_string: str) -> ToolResult:
+        """Simulates executing a query and returning data."""
+        print(f"--- TOOL EXECUTING: {self.name} ---")
+        print(f"    Params: cube_id='{cube_id}', query='{query_string[:50]}...'")
+
+        if "error" in query_string.lower():
+            raise ValueError("Simulated query syntax error. Please check your MDX.")
+        
+        mock_data = [
+            {"Provider": "Provider A", "DeniedClaims": random.randint(100, 200)},
+            {"Provider": "Provider B", "DeniedClaims": random.randint(50, 150)},
+            {"Provider": "Provider C", "DeniedClaims": random.randint(20, 100)},
+        ]
+        
+        return ToolResult(
+            data=mock_data,
+            summary=f"Query executed against cube '{cube_id}', returning {len(mock_data)} rows of data."
+        )
+
+
+========================================
+File: C:\Users\bharat.patidar\Desktop\Modules\src\tools\registry.py
+========================================
+
+from typing import Dict, Type
+from src.tools.base import BaseTool
+
+# Step 1: Import the concrete tool classes from their respective files.
+from src.tools.bi_tools import GetCubeMetadataTool, ExecuteBIQueryTool
+# from .admin_tools import CreateUserTool # Example of another tool file
+
+# Step 2: Create the TOOL_REGISTRY dictionary.
+# This registry maps a tool's unique `name` to its implementation class.
+# It is the single source of truth for all tools available in the agentic system.
+TOOL_REGISTRY: Dict[str, Type[BaseTool]] = {
+    GetCubeMetadataTool.name: GetCubeMetadataTool,
+    ExecuteBIQueryTool.name: ExecuteBIQueryTool,
+    # When you create a new tool, you register it here:
+    # CreateUserTool.name: CreateUserTool, 
+}
+
+
