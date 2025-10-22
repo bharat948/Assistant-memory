@@ -1,6 +1,6 @@
 from typing import Optional, List
-from .apprepo import AppRepoDAO
-from .models import AgentConfig
+from mongo_service.AppRepo.apprepo import AppRepoDAO
+from mongo_service.AppRepo.models import AgentConfig
 
 class AppRepoService:
     def __init__(self, dao: AppRepoDAO):
@@ -14,7 +14,19 @@ class AppRepoService:
         return await self.dao.get_by_name(name)
 
     async def fetch_agent_by_id(self, agent_id: str) -> AgentConfig:
-        return await self.dao.get_by_id(agent_id)
+        print(f"--- AppRepoService: Fetching agent by ID: {agent_id} ---")
+        try:
+            agent = await self.dao.get_by_id(agent_id)
+            if agent:
+                print(f"Agent found: {agent.name}")
+            else:
+                print("Agent not found.")
+            return agent
+        except Exception as e:
+            print(f"Error fetching agent by ID: {e}")
+            raise
+        finally:
+            print(f"--- AppRepoService: Finished fetching agent by ID: {agent_id} ---")
 
     async def list_agents(self, status: str = None):
         return await self.dao.list_all(status=status)

@@ -1,6 +1,6 @@
 from typing import Optional, List
 from bson import ObjectId
-from .models import AgentConfig
+from mongo_service.AppRepo.models import AgentConfig
 from datetime import datetime
 
 class AppRepoDAO:
@@ -22,8 +22,20 @@ class AppRepoDAO:
         return str(result.inserted_id)
 
     async def get_by_id(self, agent_id: str) -> Optional[AgentConfig]:
-        doc = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({"agent_id": agent_id})
-        return AgentConfig(**doc) if doc else None
+        print(f"--- AppRepoDAO: Getting agent by ID: {agent_id} ---")
+        try:
+            doc = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({"agent_id": agent_id})
+            if doc:
+                print("Document found in database.")
+                return AgentConfig(**doc)
+            else:
+                print("Document not found in database.")
+                return None
+        except Exception as e:
+            print(f"Error in get_by_id: {e}")
+            raise
+        finally:
+            print(f"--- AppRepoDAO: Finished getting agent by ID: {agent_id} ---")
 
     async def get_by_name(self, name: str) -> Optional[AgentConfig]:
         doc = await self.db[AppRepoDAO.COLLECTION_NAME].find_one({"name": name})

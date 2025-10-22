@@ -1,55 +1,62 @@
-# Agent & Tool Microservice Monorepo
+# Backend Agent Service
 
-This repository contains a backend-focused implementation of a "Tool + Agent" ecosystem. It provides two distinct approaches:
+This backend registers, initializes, and invokes AI agents backed by MongoDB and LangChain. Frontend (`client/`) is out of scope here.
 
-1.  **Python-Native System**: A tightly-coupled system where an agent core (`agent_core`) directly uses tools defined in Python (`python_tool_module`) and loads its configuration from MongoDB (`mongo_service`).
-2.  **Microservice Architecture**: A decoupled system featuring a FastAPI microservice (`aether_tools_service`) for registering and invoking tools via a declarative YAML configuration. A separate LangChain-based agent (`aether_agent`) consumes these tools over HTTP.
+## Execution flow
 
-## ✨ Core Concepts
+1. Start FastAPI with uvicorn:
+```bash
+uvicorn agent_service.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+2. App startup (`agent_service/app/main.py`):
+- CORS for Angular dev origins
+- Connects to Mongo via `mongo_service.config.mongo_db.connect()`
+- Includes agent routes at `/agents`
 
-### 1. Python-Native System
+3. Request path:
+- Endpoint (`agent_service/app/api/endpoints/agent.py`) → `AgentService` (`agent_service/app/core/agent_service.py`)
+- Persistence via `AppRepoService` → `AppRepoDAO` → Mongo collection
 
-*   **`mongo_service`**: Manages all database interactions for loading agent configurations.
-*   **`agent_core`**: Contains the primary agent logic, including the LLM wrapper and initialization from the database.
-*   **`python_tool_module`**: A library of tools written in Python, registered in a central dictionary, and loaded directly by the agent at runtime.
+4. Agent init:
+- `AgentInitializer` loads `AgentConfig` and constructs `agent_core.Agent`
+- Tools are loaded from `python_tool_module.tools.registry` using `allowed_tool_ids`
 
-### 2. Microservice Architecture (Aether Tools)
+5. Agent invoke:
+- `Agent.invoke(prompt, history?)` calls LangChain `AgentExecutor` and returns final output with intermediate steps and tools used
 
-*   **`aether_tools_service`**: A central API (`app/main.py`) that exposes tools defined in a YAML configuration. It handles security, validation, rate limiting, and auditing.
-*   **Declarative Tools**: Tools are defined in `aether_agent/agent/examples/tools.yaml`, specifying their type (`http` or `local`), input schema, and other metadata.
-*   **`aether_agent`**: A standalone script (`agent/agent_runner.py`) that loads tool configurations from the microservice, presents them to a LangChain agent, and provides an interactive command line.
+## Run
 
-## How to Run
+1. Install deps: `pip install -r requirements.txt`
+2. Set env vars (e.g. in `.env` at repo root):
+- `MONGO_URI` (e.g. `mongodb://localhost:27017`)
+- `MONGO_DB_NAME` (e.g. `mydatabase`)
+- `OPENAI_API_KEY`
+3. Start API:
+```bash
+uvicorn agent_service.app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-### Running the Aether Tools Microservice
+## API
 
-1.  Navigate to the `aether_agent` directory and create a `.env` file from the `.env.example`. Fill in your `OPENAI_API_KEY` and `AETHER_API_KEY`.
-    ```bash
-    cd aether_agent
-    cp .env.example .env
-    # Edit .env with your keys
-    ```
-2.  Navigate to the `aether_tools_service` directory.
-    ```bash
-    cd ../aether_tools_service
-    ```
-3.  Build and run the Docker container.
-    ```bash
-    docker-compose up --build
-    ```
-    The service will be available at `http://localhost:8000`.
+- POST `/agents/register` → register agent config
+- POST `/agents/{agent_id}/initialize` → materialize agent
+- POST `/agents/{agent_id}/invoke` → invoke with `{ prompt, history? }`
+- GET `/agents/` → list agents
 
-### Running the Aether Agent
+## Backend layout
 
-1.  Make sure the microservice is running.
-2.  In a new terminal, navigate to the `aether_agent` directory.
-    ```bash
-    cd aether_agent
-    ```
-3.  Install the required Python packages (it's recommended to use a virtual environment).
-    ```bash
-    pip install -r ../aether_tools_service/requirements.txt
-    ```
-4.  Run the agent runner.
-    ```bash
-    python -m agent.agent_runner
+- `agent_service/app/main.py`: app, CORS, lifecycle, router include
+- `agent_service/app/api/endpoints/agent.py`: agent REST endpoints
+- `agent_service/app/core/agent_service.py`: orchestration and DB calls
+- `mongo_service/config.py`: async Mongo client and `get_database`
+- `mongo_service/AppRepo/*`: models, DAO, service
+- `agent_core/agent_init.py`: loads config and builds `Agent`
+- `agent_core/agent.py`: LangChain wiring and invocation
+- `python_tool_module/tools/registry.py`: available tools
+
+## Sanitation notes
+
+- Deduped imports in endpoints
+- Tool loading wired from `allowed_tool_ids`
+- Unified DB access via `mongo_service.config.get_database`
+- Invoke response matches API model
