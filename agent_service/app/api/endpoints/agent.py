@@ -73,7 +73,6 @@ async def invoke_agent(
         response_content = await agent_service.invoke_agent(
             agent_id=agent_id, 
             prompt=request.prompt, 
-            history=request.history,
             user_id=request.user_id,
             conversation_id=request.conversation_id
         )

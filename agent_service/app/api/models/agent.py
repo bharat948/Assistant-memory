@@ -39,14 +39,6 @@ class InvokeAgentResponse(BaseModel):
     
 class InvokeAgentRequest(BaseModel):
     prompt: str
-    history: Optional[List[Dict[str, str]]] = Field(
-        default=[],
-        example=[
-            {"role": "user", "content": "What is the capital of France?"},
-            {"role": "assistant", "content": "The capital of France is Paris."}
-        ],
-        description="A list of previous user/assistant messages for context."
-    )
     user_id: Optional[str] = Field(
         default="default_user",
         description="User identifier for memory retrieval"

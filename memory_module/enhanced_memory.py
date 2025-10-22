@@ -490,39 +490,32 @@ class EnhancedMemory:
                     parent_chunks_for_db = []
             
             try:
-                # Insert chunk
+                # Insert chunk into long_term_memory table
                 cur.execute("""
-                    INSERT INTO chunks (
-                        id, content, collection, importance, chunk_type, metadata,
-                        source_conversation_id, parent_chunks, created_at, updated_at,
+                    INSERT INTO long_term_memory (
+                        id, agent_id, user_id, task_id, conversation_id,
+                        content, summary, tags, collection, chunk_type, importance, metadata,
+                        source_message_ids, parent_chunk_ids, created_at, updated_at,
                         last_accessed, access_count, archived
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s::uuid[],%s,%s,%s,0,False)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, FALSE)
                 """, (
-                    chunk_id, kwargs['content'], kwargs['collection'], kwargs['importance'],
-                    kwargs['chunk_type'], json.dumps(kwargs.get('metadata', {})),
-                    kwargs.get('source_conversation_id'), parent_chunks_for_db,
+                    chunk_id, 
+                    kwargs.get('agent_id', 'default_agent'),
+                    kwargs.get('user_id', 'default_user'),
+                    kwargs.get('task_id'),
+                    kwargs.get('source_conversation_id'),
+                    kwargs['content'], 
+                    kwargs.get('summary'),
+                    list(kwargs.get('tags', [])),  # Convert set to list for array
+                    kwargs['collection'], 
+                    kwargs['chunk_type'], 
+                    kwargs['importance'],
+                    json.dumps(kwargs.get('metadata', {})),
+                    [],  # source_message_ids - empty for now
+                    parent_chunks_for_db,  # parent_chunk_ids
                     now, now, now
                 ))
-                
-                # Insert tags
-                tags = kwargs.get('tags', [])
-                if tags:
-                    psycopg2.extras.execute_values(
-                        cur,
-                        "INSERT INTO tags (chunk_id, tag) VALUES %s ON CONFLICT DO NOTHING",
-                        [(chunk_id, t) for t in tags]
-                    )
-                    storage_logger.debug(f"    Inserted {len(tags)} tags: {', '.join(list(tags)[:10])}")
-                
-                # Update collections
-                cur.execute("""
-                    INSERT INTO collections(name, created_at, last_updated, chunk_count)
-                    VALUES(%s, %s, %s, 1)
-                    ON CONFLICT(name) DO UPDATE SET
-                        chunk_count = collections.chunk_count + 1,
-                        last_updated = EXCLUDED.last_updated
-                """, (kwargs['collection'], now, now))
                 
                 conn.commit()
                 storage_logger.info(f"✓ Chunk {chunk_id[:8]} stored successfully")
@@ -584,16 +577,15 @@ class EnhancedMemory:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             
             try:
-                cur.execute("SELECT * FROM chunks WHERE id=%s", (chunk_id,))
+                cur.execute("SELECT * FROM long_term_memory WHERE id=%s", (chunk_id,))
                 row = cur.fetchone()
                 
                 if not row:
                     logger.warning(f"✗ Chunk {chunk_id[:8]} not found")
                     return None
                 
-                # Get tags
-                cur.execute("SELECT tag FROM tags WHERE chunk_id=%s", (chunk_id,))
-                tags = {r[0] for r in cur.fetchall()}
+                # Get tags from array column
+                tags = set(row['tags']) if row['tags'] else set()
                 
                 chunk = self._row_to_chunk(dict(row), tags)
                 
@@ -606,7 +598,7 @@ class EnhancedMemory:
                 
                 # Update access statistics
                 cur.execute(
-                    "UPDATE chunks SET access_count=access_count+1, last_accessed=%s WHERE id=%s",
+                    "UPDATE long_term_memory SET access_count=access_count+1, last_accessed=%s WHERE id=%s",
                     (now_utc(), chunk_id)
                 )
                 
@@ -665,12 +657,12 @@ class EnhancedMemory:
             
             try:
                 sql = """
-                    SELECT c.*,
-                           ts_rank(to_tsvector('english', c.content), plainto_tsquery('english', %s)) as rank
-                    FROM chunks c
-                    WHERE to_tsvector('english', c.content) @@ plainto_tsquery('english', %s)
-                      AND NOT c.archived
-                    ORDER BY rank DESC, c.importance DESC
+                    SELECT ltm.*,
+                           ts_rank(to_tsvector('english', ltm.content), plainto_tsquery('english', %s)) as rank
+                    FROM long_term_memory ltm
+                    WHERE to_tsvector('english', ltm.content) @@ plainto_tsquery('english', %s)
+                      AND NOT ltm.archived
+                    ORDER BY rank DESC, ltm.importance DESC
                     LIMIT %s
                 """
                 
@@ -705,7 +697,7 @@ class EnhancedMemory:
             
             try:
                 cur.execute(
-                    "SELECT * FROM chunks WHERE created_at >= %s AND NOT archived ORDER BY created_at DESC LIMIT %s",
+                    "SELECT * FROM long_term_memory WHERE created_at >= %s AND NOT archived ORDER BY created_at DESC LIMIT %s",
                     (cutoff, limit)
                 )
                 rows = cur.fetchall()
@@ -807,7 +799,7 @@ class EnhancedMemory:
                 cur = conn.cursor()
                 try:
                     cur.execute(
-                        "UPDATE chunks SET archived=TRUE WHERE id IN %s",
+                        "UPDATE long_term_memory SET archived=TRUE WHERE id IN %s",
                         (tuple(chunk_ids),)
                     )
                     conn.commit()
@@ -839,7 +831,7 @@ class EnhancedMemory:
             cur = conn.cursor()
             try:
                 cur.execute(
-                    "UPDATE chunks SET importance=%s, updated_at=%s WHERE id=%s",
+                    "UPDATE long_term_memory SET importance=%s, updated_at=%s WHERE id=%s",
                     (importance, now_utc(), chunk_id)
                 )
                 success = cur.rowcount > 0
@@ -863,20 +855,23 @@ class EnhancedMemory:
         normalized_tags = {normalize_tag(t) for t in new_tags}
         logger.info(f">>> ADDING TAGS to {chunk_id[:8]}: {normalized_tags}")
         
-        added = 0
         with self._lock, self._get_connection() as conn:
             cur = conn.cursor()
             try:
-                for tag in normalized_tags:
-                    cur.execute(
-                        "INSERT INTO tags(chunk_id, tag) VALUES(%s, %s) ON CONFLICT DO NOTHING",
-                        (chunk_id, tag)
-                    )
-                    added += cur.rowcount
+                # Use array append operation
+                cur.execute(
+                    "UPDATE long_term_memory SET tags = array_cat(tags, %s) WHERE id = %s",
+                    (list(normalized_tags), chunk_id)
+                )
+                success = cur.rowcount > 0
                 conn.commit()
                 
-                logger.info(f"✓ Added {added} new tags")
-                return added
+                if success:
+                    logger.info(f"✓ Added {len(normalized_tags)} tags")
+                    return len(normalized_tags)
+                else:
+                    logger.warning(f"✗ Chunk not found")
+                    return 0
             except Exception as e:
                 conn.rollback()
                 logger.error(f"Failed to add tags: {e}")
@@ -886,21 +881,26 @@ class EnhancedMemory:
 
     def remove_tags_from_chunk(self, chunk_id: str, tags_to_remove: Set[str]) -> int:
         """UTILITY METHOD: Remove tags from chunk"""
-        normalized_tags = tuple(normalize_tag(t) for t in tags_to_remove)
+        normalized_tags = list(normalize_tag(t) for t in tags_to_remove)
         logger.info(f">>> REMOVING TAGS from {chunk_id[:8]}: {normalized_tags}")
         
         with self._lock, self._get_connection() as conn:
             cur = conn.cursor()
             try:
+                # Use array remove operation
                 cur.execute(
-                    "DELETE FROM tags WHERE chunk_id=%s AND tag IN %s",
-                    (chunk_id, normalized_tags)
+                    "UPDATE long_term_memory SET tags = array_remove(tags, unnest(%s)) WHERE id = %s",
+                    (normalized_tags, chunk_id)
                 )
-                removed = cur.rowcount
+                success = cur.rowcount > 0
                 conn.commit()
                 
-                logger.info(f"✓ Removed {removed} tags")
-                return removed
+                if success:
+                    logger.info(f"✓ Removed tags")
+                    return len(normalized_tags)
+                else:
+                    logger.warning(f"✗ Chunk not found")
+                    return 0
             except Exception as e:
                 conn.rollback()
                 logger.error(f"Failed to remove tags: {e}")
@@ -916,7 +916,7 @@ class EnhancedMemory:
             cur = conn.cursor()
             try:
                 cur.execute(
-                    "UPDATE chunks SET archived=TRUE, updated_at=%s WHERE id=%s",
+                    "UPDATE long_term_memory SET archived=TRUE, updated_at=%s WHERE id=%s",
                     (now_utc(), chunk_id)
                 )
                 success = cur.rowcount > 0
@@ -943,7 +943,7 @@ class EnhancedMemory:
         with self._lock, self._get_connection() as conn:
             cur = conn.cursor()
             try:
-                cur.execute("DELETE FROM chunks WHERE id=%s", (chunk_id,))
+                cur.execute("DELETE FROM long_term_memory WHERE id=%s", (chunk_id,))
                 success = cur.rowcount > 0
                 conn.commit()
                 
@@ -970,7 +970,7 @@ class EnhancedMemory:
             cur = conn.cursor()
             try:
                 cur.execute(
-                    """UPDATE chunks SET archived=TRUE, updated_at=%s 
+                    """UPDATE long_term_memory SET archived=TRUE, updated_at=%s 
                        WHERE created_at < %s AND importance < %s AND NOT archived""",
                     (now_utc(), cutoff, min_importance)
                 )
@@ -997,23 +997,23 @@ class EnhancedMemory:
                 stats = {}
                 
                 # Total chunks
-                cur.execute("SELECT COUNT(*) AS total FROM chunks WHERE NOT archived")
+                cur.execute("SELECT COUNT(*) AS total FROM long_term_memory WHERE NOT archived")
                 stats['total_chunks'] = cur.fetchone()['total']
                 
                 # Archived chunks
-                cur.execute("SELECT COUNT(*) AS archived FROM chunks WHERE archived")
+                cur.execute("SELECT COUNT(*) AS archived FROM long_term_memory WHERE archived")
                 stats['archived_chunks'] = cur.fetchone()['archived']
                 
                 # By type
-                cur.execute("SELECT chunk_type, COUNT(*) AS cnt FROM chunks WHERE NOT archived GROUP BY chunk_type")
+                cur.execute("SELECT chunk_type, COUNT(*) AS cnt FROM long_term_memory WHERE NOT archived GROUP BY chunk_type")
                 stats['by_type'] = {r['chunk_type']: r['cnt'] for r in cur.fetchall()}
                 
                 # Top collections
-                cur.execute("SELECT collection, COUNT(*) AS cnt FROM chunks WHERE NOT archived GROUP BY collection ORDER BY cnt DESC LIMIT 10")
+                cur.execute("SELECT collection, COUNT(*) AS cnt FROM long_term_memory WHERE NOT archived GROUP BY collection ORDER BY cnt DESC LIMIT 10")
                 stats['top_collections'] = {r['collection']: r['cnt'] for r in cur.fetchall()}
                 
                 # Importance stats
-                cur.execute("SELECT AVG(importance) AS avg, MIN(importance) AS min, MAX(importance) AS max FROM chunks WHERE NOT archived")
+                cur.execute("SELECT AVG(importance) AS avg, MIN(importance) AS min, MAX(importance) AS max FROM long_term_memory WHERE NOT archived")
                 imp = cur.fetchone()
                 stats['importance'] = {
                     'avg': round(imp['avg'] or 0, 3),
@@ -1021,12 +1021,12 @@ class EnhancedMemory:
                     'max': imp['max'] or 0
                 }
                 
-                # Unique tags
-                cur.execute("SELECT COUNT(DISTINCT tag) AS unique_tags FROM tags")
+                # Unique tags (from array column)
+                cur.execute("SELECT COUNT(DISTINCT unnest(tags)) AS unique_tags FROM long_term_memory WHERE NOT archived")
                 stats['unique_tags'] = cur.fetchone()['unique_tags']
                 
                 # Most accessed
-                cur.execute("SELECT id, content, access_count FROM chunks WHERE NOT archived ORDER BY access_count DESC LIMIT 5")
+                cur.execute("SELECT id, content, access_count FROM long_term_memory WHERE NOT archived ORDER BY access_count DESC LIMIT 5")
                 stats['most_accessed'] = [
                     {'id': str(r['id'])[:8], 'content': r['content'][:100], 'count': r['access_count']}
                     for r in cur.fetchall()
@@ -1054,7 +1054,14 @@ class EnhancedMemory:
         with self._lock, self._get_connection() as conn:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             try:
-                cur.execute("SELECT * FROM collections ORDER BY chunk_count DESC")
+                cur.execute("""
+                    SELECT collection as name, COUNT(*) as chunk_count, 
+                           MAX(created_at) as last_updated, MIN(created_at) as created_at
+                    FROM long_term_memory 
+                    WHERE NOT archived 
+                    GROUP BY collection 
+                    ORDER BY chunk_count DESC
+                """)
                 collections = [dict(r) for r in cur.fetchall()]
                 
                 logger.info(f"✓ Retrieved {len(collections)} collections")
@@ -1075,10 +1082,14 @@ class EnhancedMemory:
         with self._lock, self._get_connection() as conn:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
             try:
-                cur.execute(
-                    "SELECT tag, COUNT(*) AS cnt FROM tags GROUP BY tag ORDER BY cnt DESC LIMIT %s",
-                    (limit,)
-                )
+                cur.execute("""
+                    SELECT unnest(tags) as tag, COUNT(*) AS cnt 
+                    FROM long_term_memory 
+                    WHERE NOT archived 
+                    GROUP BY unnest(tags) 
+                    ORDER BY cnt DESC 
+                    LIMIT %s
+                """, (limit,))
                 tags = [{'tag': r['tag'], 'count': r['cnt']} for r in cur.fetchall()]
                 
                 logger.info(f"✓ Retrieved {len(tags)} tags")
@@ -1097,19 +1108,8 @@ class EnhancedMemory:
         if not rows:
             return []
         
-        ids = tuple(r['id'] for r in rows)
-        
-        with self._get_connection() as conn:
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("SELECT chunk_id, tag FROM tags WHERE chunk_id IN %s", (ids,))
-            
-            tags_map = {}
-            for r in cur.fetchall():
-                tags_map.setdefault(r['chunk_id'], set()).add(r['tag'])
-            
-            cur.close()
-        
-        return [self._row_to_chunk(dict(r), tags_map.get(r['id'], set())) for r in rows]
+        # Tags are now stored in array column, no need for separate query
+        return [self._row_to_chunk(dict(r), set(r['tags']) if r['tags'] else set()) for r in rows]
 
     def _row_to_chunk(self, row: dict, tags: Set[str]) -> MemoryChunk:
         """Helper: Convert database row to MemoryChunk object"""
@@ -1134,10 +1134,14 @@ class EnhancedMemory:
         """Helper: Get most popular tags for LLM context"""
         with self._lock, self._get_connection() as conn:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute(
-                "SELECT tag, COUNT(*) AS cnt FROM tags GROUP BY tag ORDER BY cnt DESC LIMIT %s",
-                (limit,)
-            )
+            cur.execute("""
+                SELECT unnest(tags) as tag, COUNT(*) AS cnt 
+                FROM long_term_memory 
+                WHERE NOT archived 
+                GROUP BY unnest(tags) 
+                ORDER BY cnt DESC 
+                LIMIT %s
+            """, (limit,))
             tags = [r['tag'] for r in cur.fetchall()]
             cur.close()
             return tags

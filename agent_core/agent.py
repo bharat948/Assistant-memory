@@ -6,6 +6,7 @@ from langchain_core.prompts.chat import (
     ChatPromptTemplate,
     MessagesPlaceholder,
 )
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from python_tool_module.tools.base import BaseTool
 from langchain.agents import AgentExecutor
@@ -194,27 +195,29 @@ class Agent:
                 except Exception as e:
                     print(f"[Agent:invoke] Warning: Could not retrieve memory: {e}")
             
-            # Prepare input with conversation history
+            # Convert conversation history to LangChain message objects
+            chat_history = []
             if conversation_history:
-                # Format history for agent execution
-                formatted_history = []
                 for msg in conversation_history:
                     if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
-                        formatted_history.append(f"{msg['role']}: {msg['content']}")
-                
-                # Combine history with current query
-                full_input = "\n".join(formatted_history) + f"\nuser: {user_query}"
-            else:
-                full_input = user_query
+                        if msg['role'] == 'user':
+                            chat_history.append(HumanMessage(content=msg['content']))
+                        elif msg['role'] == 'assistant':
+                            chat_history.append(AIMessage(content=msg['content']))
             
             if self.agent_executor is None:
                 print("[Agent:invoke][WARN] No AgentExecutor; returning simple LLM response")
                 # Fallback to simple chat using ChatOpenAI directly
-                ai_message = await self.llm.ainvoke(full_input) if hasattr(self.llm, "ainvoke") else None
+                # Build message list for LLM
+                messages = chat_history + [HumanMessage(content=user_query)]
+                ai_message = await self.llm.ainvoke(messages) if hasattr(self.llm, "ainvoke") else None
                 response_content = ai_message.content if ai_message else ""
             else:
                 print(f"[Agent:invoke] Invoking with tools_count={len(self.langchain_tools)}")
-                result = await self.agent_executor.ainvoke({"input": full_input}, config=config or {})
+                result = await self.agent_executor.ainvoke({
+                    "input": user_query,
+                    "chat_history": chat_history
+                }, config=config or {})
                 
                 # Some LC outputs may contain AIMessage objects; normalize to strings
                 response_content = result.get("output", "No response generated")
