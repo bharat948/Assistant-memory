@@ -115,39 +115,6 @@ ALLOWED_TAGS=["general", "work", "code"]
 ALLOWED_COLLECTIONS=["conversations", "general"]
 WORKING_MEMORY_THRESHOLD=6
 ```
-
-#### 4. Code Cleanup
-
-**Remove these methods:**
-- `AgentInitializer.init_and_invoke()` in `agent_init.py` (lines 47-84)
-
-**Keep these methods:**
-- `AgentInitializer.init_agent()` - used by initialize endpoint
-- `Agent.invoke()` - core execution method
-- `AgentService.initialize_agent()` - caching wrapper
-- `AgentService.invoke_agent()` - memory-aware invoke
-
-### Files Modified
-
-```
-agent_core/agent.py
-agent_core/agent_init.py
-agent_service/app/core/agent_service.py
-agent_service/app/api/models/agent.py
-.env (create new)
-```
-
-### Expected Flow After Changes
-
-1. User calls `/register` with agent config → stored in MongoDB
-2. User calls `/initialize/{agent_id}` → creates Agent + Memory → cached in memory
-3. User calls `/invoke/{agent_id}` (multiple times):
-   - Retrieves agent from cache
-   - Gets conversation history from memory
-   - Executes agent with history context
-   - Stores new messages to memory
-   - Returns response
-
 ## 🛠️ Installation
 
 ### Prerequisites
