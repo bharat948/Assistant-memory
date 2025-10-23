@@ -51,6 +51,7 @@ class AgentService:
             # Agent was initialized by another worker, reinitialize locally
             agent = await AgentInitializer.init_agent(agent_id=agent_id)
             self._agent_cache[agent_id] = agent
+            self.cache_manager.update_last_accessed(agent_id)
             print(f"[AgentService] Agent {agent_id} reinitialized and cached locally")
             return agent
         
@@ -88,6 +89,7 @@ class AgentService:
                 # Reinitialize agent locally
                 agent = await AgentInitializer.init_agent(agent_id=agent_id)
                 self._agent_cache[agent_id] = agent
+                self.cache_manager.update_last_accessed(agent_id)
             else:
                 raise ValueError(f"Agent with ID '{agent_id}' not found in cache. Please initialize the agent first.")
 
