@@ -1,6 +1,6 @@
 from typing import Optional, List
 from bson import ObjectId
-from mongo_service.AppRepo.models import AgentConfig
+from storage.agent_repo.models import AgentConfig
 from datetime import datetime
 
 class AppRepoDAO:

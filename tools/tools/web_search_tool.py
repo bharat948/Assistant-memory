@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from tavily import TavilyClient
-from python_tool_module.tools.base import BaseTool, ToolResult
+from tools.tools.base import BaseTool, ToolResult
 
 load_dotenv() # Load environment variables from .env file
 

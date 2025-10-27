@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
-from python_tool_module.tools.base import BaseTool
-from python_tool_module.tools.registry import TOOL_REGISTRY
+from tools.tools.base import BaseTool
+from tools.tools.registry import TOOL_REGISTRY
 
 class ToolLoader:
     def get_allowed_tools(self, allowed_tool_ids: List[str]) -> Dict[str, BaseTool]:

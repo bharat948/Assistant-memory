@@ -1,6 +1,6 @@
 from typing import Optional, List
-from mongo_service.AppRepo.apprepo import AppRepoDAO
-from mongo_service.AppRepo.models import AgentConfig
+from storage.agent_repo.apprepo import AppRepoDAO
+from storage.agent_repo.models import AgentConfig
 
 class AppRepoService:
     def __init__(self, dao: AppRepoDAO):

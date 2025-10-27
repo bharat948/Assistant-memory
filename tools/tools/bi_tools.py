@@ -1,6 +1,6 @@
 import random
 from pydantic import BaseModel, Field
-from python_tool_module.tools.base import BaseTool, ToolResult
+from tools.tools.base import BaseTool, ToolResult
 
 class GetCubeMetadataArgs(BaseModel):
     cube_id: str = Field(..., description="The unique identifier of the BI cube to inspect.")

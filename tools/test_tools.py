@@ -1,5 +1,5 @@
 import asyncio
-from python_tool_module.services.tool_loader import tool_loader
+from tools.services.tool_loader import tool_loader
 
 async def main():
     print("--- Testing Tool Module ---")
