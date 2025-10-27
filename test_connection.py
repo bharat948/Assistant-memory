@@ -1,8 +1,8 @@
 import asyncio
 from dotenv import load_dotenv
-from mongo_service.AppRepo.apprepo import AppRepoDAO
-from mongo_service.config import mongo_db, get_database
-from mongo_service.AppRepo.service import AppRepoService
+from storage.agent_repo.apprepo import AppRepoDAO
+from storage.config import mongo_db, get_database
+from storage.agent_repo.service import AppRepoService
 
 load_dotenv()
 

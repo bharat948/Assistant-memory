@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from mongo_service.AppRepo.models import LLMConfig, Dependencies
+from storage.agent_repo.models import LLMConfig, Dependencies
 
 class RegisterAgentRequest(BaseModel):
     agent_id: str
