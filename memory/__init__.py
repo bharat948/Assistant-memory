@@ -100,7 +100,7 @@ __all__ = [
     
     # Main Classes
     'EnhancedMemory',  # Now uses MongoDB backend
-    'MongoDBEnhancedMemory'  # Also available explicitly
+    'MongoDBEnhancedMemory',  # Also available explicitly
 ]
 
 # Version information

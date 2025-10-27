@@ -57,3 +57,5 @@ websockets==15.0.1
 zstandard==0.24.0
 langgraph>=0.2.0
 serpapi>=0.1.5
+pytest
+pytest-asyncio

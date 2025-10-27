@@ -8,7 +8,7 @@ A comprehensive FastAPI-based platform for registering, initializing, and managi
 - **Memory Integration**: Persistent conversation history with EnhancedMemory module
 - **Tool System**: Modular tool architecture with BI, web search, and custom tools
 - **Caching**: Efficient agent caching to avoid re-initialization
-- **Multi-Database Support**: MongoDB for agent configs, PostgreSQL for memory
+- **Database Support**: MongoDB for agent configs and memory storage
 - **RESTful API**: Clean FastAPI endpoints with automatic documentation
 
 ## 🏗️ Architecture Overview
@@ -21,7 +21,7 @@ graph TB
     AgentService --> MongoService[MongoDB Service]
     AgentCore --> MemoryModule[Memory Module]
     AgentCore --> ToolModule[Python Tool Module]
-    MemoryModule --> PostgreSQL[(PostgreSQL)]
+    MemoryModule --> MongoDB[(MongoDB)]
     MongoService --> MongoDB[(MongoDB)]
 ```
 
@@ -154,7 +154,6 @@ agent_service/app/api/models/agent.py
 
 - Python 3.12+
 - MongoDB
-- PostgreSQL
 - Node.js 18+ (for frontend)
 
 ### Backend Setup
@@ -188,7 +187,6 @@ MONGO_DB_NAME=agent_service_db
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Memory Module Configuration
-POSTGRES_DSN=postgresql://user:password@localhost:5432/memory_db
 ALLOWED_TAGS=["general", "work", "code", "bi", "search"]
 ALLOWED_COLLECTIONS=["conversations", "general", "work_meetings"]
 WORKING_MEMORY_THRESHOLD=6
@@ -237,7 +235,7 @@ config = await service.fetch_agent_by_id(agent_id)
 
 # 2. Initialize EnhancedMemory
 memory = EnhancedMemory(
-    db_dsn=postgres_dsn,
+    mongo_uri=mongo_uri,
     llm_client=llm_client,
     working_memory_threshold=threshold
 )
@@ -434,7 +432,7 @@ Available tools are configured via `allowed_tool_ids`:
 
 ### Memory Configuration
 Memory behavior is controlled via environment variables:
-- `POSTGRES_DSN`: PostgreSQL connection string
+- `MONGO_URI`: MongoDB connection string (used for both agent configs and memory)
 - `ALLOWED_TAGS`: Memory tagging categories
 - `ALLOWED_COLLECTIONS`: Memory storage collections
 - `WORKING_MEMORY_THRESHOLD`: Short-term memory limit
@@ -464,12 +462,12 @@ sequenceDiagram
     participant AgentService
     participant AgentCore
     participant Memory
-    participant PostgreSQL
+    participant MongoDB
     
     API->>AgentService: POST /agents/{id}/initialize
     AgentService->>AgentCore: init_agent()
     AgentCore->>Memory: Create EnhancedMemory
-    Memory->>PostgreSQL: Setup memory tables
+    Memory->>MongoDB: Setup memory collections
     AgentCore->>AgentCore: Create Agent instance
     AgentService->>AgentService: Cache agent
     AgentService-->>API: Agent initialized
@@ -535,7 +533,6 @@ CMD ["uvicorn", "agent_service.app.main:app", "--host", "0.0.0.0", "--port", "80
 ### Environment Variables
 Ensure all required environment variables are set:
 - `MONGO_URI`: MongoDB connection string
-- `POSTGRES_DSN`: PostgreSQL connection string
 - `OPENAI_API_KEY`: OpenAI API key
 - `TAVILY_API_KEY`: Tavily API key (optional)
 - `SERPAPI_API_KEY`: SerpAPI key (optional)
