@@ -1,0 +1,60 @@
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [__init__:27] - ======================================================================
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [__init__:28] - Initializing Enhanced Memory System v5.0
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [__init__:29] - ======================================================================
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [__init__:43] - [OK] Connection pool created (size: 5, max_overflow: 10)
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [_init_database:79] - Initializing database schema...
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:101] - [OK] short_term_memory table created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:112] - [OK] Index idx_stm_agent_conv created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:112] - [OK] Index idx_stm_timestamp created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:112] - [OK] Index idx_stm_user created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:144] - [OK] long_term_memory table created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_agent created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_user_task created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_conversation created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_tags created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_collection created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_importance created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_created created
+2025-10-22 23:47:20 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_content_fts created
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [_init_database:163] - [OK] Database schema initialized successfully
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [_init_database:164] -   - short_term_memory: Ready with 3 indexes
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [_init_database:165] -   - long_term_memory: Ready with 8 indexes
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [__init__:57] - [OK] Enhanced Memory System initialized successfully
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [register_agent_permissions:535] - >>> REGISTERING PERMISSIONS for agent: cs_professor_001
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [register_agent_permissions:536] -     Allowed collections: ['conversations', 'general']
+2025-10-22 23:47:20 - EnhancedMemory - INFO - [register_agent_permissions:537] -     Allowed tags: 3 tags
+2025-10-22 23:47:30 - EnhancedMemory - INFO - [get_short_term_memory_by_user:266] - [OK] Retrieved 0 short-term messages for user default_user
+2025-10-22 23:47:33 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation 12345
+2025-10-22 23:47:53 - EnhancedMemory - INFO - [get_short_term_memory_by_user:266] - [OK] Retrieved 2 short-term messages for user default_user
+2025-10-22 23:47:55 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation 12345
+2025-10-22 23:48:10 - EnhancedMemory - INFO - [get_short_term_memory_by_user:266] - [OK] Retrieved 4 short-term messages for user default_user
+2025-10-22 23:48:13 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation 12345
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [__init__:27] - ======================================================================
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [__init__:28] - Initializing Enhanced Memory System v5.0
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [__init__:29] - ======================================================================
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [__init__:43] - [OK] Connection pool created (size: 5, max_overflow: 10)
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [_init_database:79] - Initializing database schema...
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:101] - [OK] short_term_memory table created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:112] - [OK] Index idx_stm_agent_conv created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:112] - [OK] Index idx_stm_timestamp created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:112] - [OK] Index idx_stm_user created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:144] - [OK] long_term_memory table created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_agent created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_user_task created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_conversation created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_tags created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_collection created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_importance created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_created created
+2025-10-24 11:49:09 - EnhancedMemory - DEBUG - [_init_database:160] - [OK] Index idx_ltm_content_fts created
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [_init_database:163] - [OK] Database schema initialized successfully
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [_init_database:164] -   - short_term_memory: Ready with 3 indexes
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [_init_database:165] -   - long_term_memory: Ready with 8 indexes
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [__init__:57] - [OK] Enhanced Memory System initialized successfully
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [register_agent_permissions:535] - >>> REGISTERING PERMISSIONS for agent: 0001
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [register_agent_permissions:536] -     Allowed collections: ['conversations', 'general']
+2025-10-24 11:49:09 - EnhancedMemory - INFO - [register_agent_permissions:537] -     Allowed tags: 3 tags
+2025-10-24 11:49:40 - EnhancedMemory - INFO - [get_short_term_memory_by_user:266] - [OK] Retrieved 0 short-term messages for user default_user
+2025-10-24 11:49:42 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation string
+2025-10-24 11:50:17 - EnhancedMemory - INFO - [get_short_term_memory_by_user:266] - [OK] Retrieved 2 short-term messages for user default_user
+2025-10-24 11:50:19 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation string

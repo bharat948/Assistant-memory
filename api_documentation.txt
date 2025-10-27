@@ -1,0 +1,105 @@
+─────────────────────────────
+API Contract Documentation
+─────────────────────────────
+
+1. POST /register
+─────────────────────────────
+• Description:
+  • Registers a new agent in the system.
+• Request Body (RegisterAgentRequest):
+  {
+    "agent_id": "string",
+    "name": "string",
+    "agent_type": "string",
+    "description": "string (optional)",
+    "llm_config": { ... } (optional),
+    "system_prompt_template": "string (optional)",
+    "allowed_tool_ids": ["string", ...],
+    "dependencies": { ... } (optional),
+    "allowed_roles": ["string", ...],
+    "created_by": "string (default: 'api')"
+  }
+• Success Response (AgentResponse):
+  {
+    "agent_id": "string",
+    "name": "string",
+    "agent_type": "string",
+    "status": "string",
+    "description": "string (optional)"
+  }
+• Error Responses:
+  • HTTP 400: For invalid inputs (ValueError).
+  • HTTP 500: For unexpected errors.
+
+─────────────────────────────
+2. POST /{agent_id}/initialize
+─────────────────────────────
+• Description:
+  • Initializes an agent by its ID, preparing it for execution.
+• Path Parameter:
+  • agent_id: string
+• Success Response (InitializeAgentResponse):
+  {
+    "agent_id": "string",
+    "name": "string",
+    "status": "string",
+    "message": "string"
+  }
+• Error Responses:
+  • HTTP 404: When the agent is not found (ValueError).
+  • HTTP 500: For unexpected or server errors.
+
+─────────────────────────────
+3. POST /{agent_id}/invoke
+─────────────────────────────
+• Description:
+  • Invokes an agent using a user prompt, optionally passing conversation context.
+• Path Parameter:
+  • agent_id: string
+• Request Body (InvokeAgentRequest):
+  {
+    "prompt": "string",
+    "user_id": "string (optional, default: 'default_user')",
+    "conversation_id": "string (optional)"
+  }
+• Success Response (InvokeAgentResponse):
+  {
+    "agent_id": "string",
+    "agent_name": "string",
+    "response": "string",
+    "intermediate_steps": [ /* list of intermediate processing steps */ ],
+    "tools_used": [ /* list of tool identifiers used in the process */ ]
+  }
+• Error Responses:
+  • HTTP 404: When the agent is not found (ValueError).
+  • HTTP 500: If there is a failure during the tool execution.
+
+─────────────────────────────
+4. GET /
+─────────────────────────────
+• Description:
+  • Retrieves a list of all registered agents.
+• Success Response (ListAgentsResponse):
+  {
+    "agents": [
+      {
+        "agent_id": "string",
+        "name": "string",
+        "agent_type": "string",
+        "status": "string",
+        "description": "string (optional)"
+      },
+      …
+    ]
+  }
+• Error Response:
+  • HTTP 500: For unexpected errors.
+
+─────────────────────────────
+Notes:
+• All endpoints expect JSON-formatted payloads.
+• Ensure that the frontend strictly adheres to these schemas for proper API integration and error handling.
+• HTTP status codes should be checked to determine the result of each API call.
+• Additional specifications such as authentication or rate limits may be added later as needed.
+
+This document serves as the API contract for frontend integration with the backend agent service API.
