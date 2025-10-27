@@ -18,36 +18,36 @@ graph TB
     Client[Client Application] --> API[FastAPI Service]
     API --> AgentService[Agent Service]
     AgentService --> AgentCore[Agent Core]
-    AgentService --> MongoService[MongoDB Service]
-    AgentCore --> MemoryModule[Memory Module]
+    AgentService --> AgentData[Agent Data Module]
+    AgentCore --> AgentData
     AgentCore --> ToolModule[Python Tool Module]
-    MemoryModule --> MongoDB[(MongoDB)]
-    MongoService --> MongoDB[(MongoDB)]
+    AgentData --> MongoDB[(MongoDB)]
 ```
 
 ## 📁 Project Structure
 
 ```
-├── agent_service/           # FastAPI application
-│   ├── app/
-│   │   ├── main.py         # FastAPI app entry point
-│   │   ├── api/
-│   │   │   ├── endpoints/  # REST endpoints
-│   │   │   └── models/     # Pydantic models
-│   │   └── core/           # Business logic
-├── agent_core/             # Agent core functionality
-│   ├── agent.py           # Agent class with memory integration
-│   └── agent_init.py      # Agent initialization
-├── memory_module/          # Enhanced memory system
-│   ├── enhanced_memory.py # Main memory class
-│   ├── llm_clients.py     # LLM integrations
-│   └── models.py          # Memory data models
-├── python_tool_module/     # Tool system
-│   ├── tools/             # Available tools
-│   └── services/          # Tool loading service
-├── mongo_service/         # MongoDB integration
-│   └── AppRepo/           # Data access layer
-└── client/                # Frontend (Angular)
+├── api/                     # FastAPI application
+│   ├── endpoints/           # REST endpoints
+│   ├── models/              # Pydantic models
+│   └── services/            # Application services
+├── core/                    # Core agent functionality
+│   ├── agent.py             # Agent class with memory integration
+│   └── agent_init.py        # Agent initialization
+├── agent_data/              # Consolidated data module
+│   ├── config.py            # DB/connection configuration
+│   ├── db.py                # MongoDB connection handler
+│   ├── agent_config.py      # Agent CRUD + config models
+│   ├── memory.py            # Agent memory logic
+│   ├── permissions.py       # Shared permissions logic
+│   └── models/              # Data models
+│       ├── agent_config.py
+│       ├── memory_chunk.py
+│       └── chat_history.py
+├── tools/                   # Tool system
+│   ├── tools/               # Available tools
+│   └── services/            # Tool loading service
+└── client/                  # Frontend (Angular)
 ```
 
 ## 🔧 Agent Service Refactor: Initialize Once + Memory Integration
@@ -251,40 +251,30 @@ memory.register_agent_permissions(
 agent = Agent(..., memory=memory)
 ```
 
-### 2. Memory Module (`memory_module/`)
+### 2. Agent Data Module (`agent_data/`)
 
-Advanced memory management with LLM-powered tagging and consolidation.
+Consolidated module for agent configurations, memory, and database interactions.
 
-#### EnhancedMemory Class
-```python
-class EnhancedMemory:
-    def __init__(self, db_dsn, llm_client, working_memory_threshold=6):
-        # Initialize PostgreSQL connection pool
-        # Setup LLM client for tagging
-        # Configure working memory buffer
-```
+#### Key Components:
+- **`config.py`**: Centralized database and connection configurations.
+- **`db.py`**: Handles MongoDB connection and provides a shared client.
+- **`agent_config.py`**: Service layer for agent CRUD operations and configuration management.
+- **`memory.py`**: Service layer for agent memory logic, including chat history and long-term memory.
+- **`permissions.py`**: Shared logic for access permissions.
+- **`models/`**: Directory containing individual data models for `agent_config`, `memory_chunk`, and `chat_history`.
 
-#### Key Features:
-- **Short-term Memory**: Recent conversation storage
-- **Long-term Memory**: Persistent knowledge storage
-- **LLM Tagging**: Automatic content categorization
-- **Permission System**: Role-based access control
-- **Memory Consolidation**: Automatic knowledge synthesis
-
-#### Memory Operations:
+#### Memory Operations (via `agent_data.memory.MemoryService`):
 ```python
 # Retrieve conversation history
-recent_messages = memory.get_short_term_memory_by_user(
+recent_messages = await memory_service.get_chat_history(
     user_id=user_id, 
     agent_id=agent_id, 
     limit=10
 )
 
 # Store conversation
-memory.commit_working_memory(
-    chat=chat_chunk,
-    agent_id=agent_id,
-    context_handle=context_handle
+await memory_service.add_chat_history(
+    chat_history=chat_chunk
 )
 ```
 

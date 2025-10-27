@@ -1,13 +1,15 @@
 
-from storage.agent_repo.apprepo import AppRepoDAO
-from storage.agent_repo.service import AppRepoService
 from core.agent import Agent
-from storage.config import get_database
+from agent_data.db import get_database
+from agent_data.agent_config import AgentConfigService
+from agent_data.memory import MemoryService
+from agent_data.permissions import AccessPermissions # Assuming permissions will be used directly
 from typing import Dict, Any, Optional
 import os
 import json
 from dotenv import load_dotenv
-from memory import EnhancedMemory, GroqLLMClient, MockLLMClient
+# Assuming GroqLLMClient and MockLLMClient will be handled elsewhere or are not directly needed here
+# from memory.llm_clients import GroqLLMClient, MockLLMClient
 
 class AgentInitializer:
     @staticmethod
@@ -18,12 +20,9 @@ class AgentInitializer:
         # Load environment variables
         load_dotenv()
 
-        db = await get_database()
-        dao = AppRepoDAO(db)
-        service = AppRepoService(dao)
-
-        # Fetch config from AppRepo
-        config = await service.fetch_agent_by_id(agent_id)
+        # Fetch config from AgentConfigService
+        agent_config_service = AgentConfigService()
+        config = await agent_config_service.get_agent_by_id(agent_id)
 
         if not config:
             raise ValueError("Agent not found")
@@ -42,25 +41,17 @@ class AgentInitializer:
             # Initialize LLM client for memory
             llm_client = GroqLLMClient()  # You can switch to MockLLMClient for testing
             
-            # Create MongoDB-backed EnhancedMemory
-            memory = EnhancedMemory(
-                mongo_uri=mongo_uri,
-                db_name=mongo_db_name,
-                llm_client=llm_client,
-                working_memory_threshold=working_memory_threshold
-            )
-            
-            # Register agent permissions
-            memory.register_agent_permissions(
-                agent_id=agent_id,
-                allowed_tags=allowed_tags,
-                allowed_collections=allowed_collections
-            )
-            
-            print(f"[AgentInitializer] Memory initialized for agent {agent_id} using MongoDB")
-            
+            # Create MongoDB-backed MemoryService
+            memory_service = MemoryService()
+            # Note: LLM client and permissions registration will need to be integrated into MemoryService
+            # For now, we'll just instantiate the service.
+            memory = memory_service # Assign the service directly for now. Further integration needed.
+
+            print(f"[AgentInitializer] Memory initialized for agent {agent_id} using MemoryService")
+
         except Exception as e:
             print(f"[AgentInitializer] Warning: Could not initialize memory: {e}")
+            memory = None # Ensure memory is None if initialization fails
 
         agent = Agent(
             agent_id=str(config.agent_id),

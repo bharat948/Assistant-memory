@@ -12,7 +12,10 @@ from tools.tools.base import BaseTool
 from langchain.agents import AgentExecutor
 from tools.services.tool_loader import tool_loader
 from langchain import hub
-from memory import EnhancedMemory, ContextualHandle, ChatHistoryChunk
+from agent_data.memory import MemoryService
+from agent_data.models.chat_history import ChatHistoryChunk
+from agent_data.models.memory_chunk import MemoryChunk # Potentially needed for memory operations
+from agent_data.permissions import AccessPermissions # Potentially needed for memory operations
 
 class Agent:
     def __init__(
@@ -30,7 +33,7 @@ class Agent:
         dependencies: Dict[str, List[str]],
         allowed_tool_ids: List[str],
         output_schema: Optional[Dict[str, Any]] = None,
-        memory: Optional[EnhancedMemory] = None,
+        memory: Optional[MemoryService] = None, # Changed to MemoryService
     ):
         self.agent_id = agent_id
         self.name = name
@@ -175,36 +178,17 @@ class Agent:
             Dict containing the agent's response and any tool outputs
         """
         try:
-            # Create context handle for memory operations
-            context_handle = ContextualHandle(
-                user_id=user_id,
-                conversation_id=conversation_id or f"conv_{self.agent_id}_{user_id}"
-            )
-            
             # Retrieve conversation history from memory if available
             conversation_history = []
             if self.memory:
                 try:
-                    # Check if memory is async (MongoDBEnhancedMemory)
-                    if hasattr(self.memory, 'get_short_term_memory_by_user'):
-                        if callable(self.memory.get_short_term_memory_by_user):
-                            import inspect
-                            if inspect.iscoroutinefunction(self.memory.get_short_term_memory_by_user):
-                                # Async MongoDB
-                                recent_messages = await self.memory.get_short_term_memory_by_user(
-                                    user_id=user_id, 
-                                    agent_id=self.agent_id, 
-                                    limit=10
-                                )
-                            else:
-                                # Sync PostgreSQL
-                                recent_messages = self.memory.get_short_term_memory_by_user(
-                                    user_id=user_id, 
-                                    agent_id=self.agent_id, 
-                                    limit=10
-                                )
-                            conversation_history = recent_messages or []
-                            print(f"[Agent:invoke] Retrieved {len(conversation_history)} messages from memory")
+                    recent_messages = await self.memory.get_chat_history(
+                        user_id=user_id,
+                        agent_id=self.agent_id,
+                        limit=10
+                    )
+                    conversation_history = recent_messages or []
+                    print(f"[Agent:invoke] Retrieved {len(conversation_history)} messages from memory")
                 except Exception as e:
                     print(f"[Agent:invoke] Warning: Could not retrieve memory: {e}")
             
@@ -255,25 +239,9 @@ class Agent:
                         timestamp=datetime.utcnow(),
                         conversation_id=context_handle.conversation_id
                     )
-                    
-                    # Commit to working memory (handle both sync and async)
-                    import inspect
-                    if hasattr(self.memory, 'commit_working_memory'):
-                        if inspect.iscoroutinefunction(self.memory.commit_working_memory):
-                            # Async MongoDB
-                            await self.memory.commit_working_memory(
-                                chat=chat_chunk,
-                                agent_id=self.agent_id,
-                                context_handle=context_handle
-                            )
-                        else:
-                            # Sync PostgreSQL
-                            self.memory.commit_working_memory(
-                                chat=chat_chunk,
-                                agent_id=self.agent_id,
-                                context_handle=context_handle
-                            )
-                        print(f"[Agent:invoke] Stored conversation to memory")
+                    # Commit to working memory
+                    await self.memory.add_chat_history(chat_history=chat_chunk)
+                    print(f"[Agent:invoke] Stored conversation to memory")
                 except Exception as e:
                     print(f"[Agent:invoke] Warning: Could not store to memory: {e}")
 

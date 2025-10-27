@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from storage.agent_repo.models import LLMConfig, Dependencies
+from agent_data.models.agent_config import LLMConfig, Dependencies
 
 class RegisterAgentRequest(BaseModel):
     agent_id: str

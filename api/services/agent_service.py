@@ -1,10 +1,9 @@
 from typing import List, Dict, Optional
-from storage.agent_repo.service import AppRepoService
-from storage.agent_repo.apprepo import AppRepoDAO
+from agent_data.agent_config import AgentConfigService
 from api.models.agent import RegisterAgentRequest
 from core.agent_init import AgentInitializer
 from core.agent import Agent
-from storage.agent_repo.models import AgentConfig
+from agent_data.models.agent_config import AgentConfig
 from api.services.agent_cache import AgentCacheManager
 import os
 
@@ -13,7 +12,7 @@ class AgentService:
     _agent_cache: Dict[str, Agent] = {}
     
     def __init__(self, db):
-        self.apprepo_service = AppRepoService(AppRepoDAO(db))
+        self.apprepo_service = AgentConfigService()
         self.db = db
         
         # Cache manager will be initialized lazily (async context needed)

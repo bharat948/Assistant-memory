@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
 from api.endpoints import agent
-from storage.config import mongo_db
+from agent_data.db import mongo_db
 
 app = FastAPI(title="Agent Service")
 
