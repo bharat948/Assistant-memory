@@ -134,3 +134,18 @@
 2025-10-28 00:08:00 - EnhancedMemory - INFO - [_init_collections:102] - [OK] MongoDB collections initialized successfully
 2025-10-28 00:08:00 - EnhancedMemory - INFO - [get_short_term_memory_by_user:196] - [OK] Retrieved 0 short-term messages for user default_user
 2025-10-28 00:08:03 - EnhancedMemory - INFO - [commit_working_memory:157] - [OK] Stored 2 messages in short_term for conversation string
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [__init__:39] - ======================================================================
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [__init__:40] - Initializing MongoDB Enhanced Memory System v6.0
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [__init__:41] - ======================================================================
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [__init__:52] - [OK] Connected to MongoDB database: Agents
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [__init__:67] - [OK] MongoDB Enhanced Memory System initialized successfully
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [register_agent_permissions:364] - >>> REGISTERING PERMISSIONS for agent: test_workflow_agent
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [register_agent_permissions:365] -     Allowed collections: ['conversations', 'general']
+2025-10-28 00:10:33 - EnhancedMemory - INFO - [register_agent_permissions:366] -     Allowed tags: 3 tags
+2025-10-28 00:10:37 - EnhancedMemory - INFO - [_init_collections:71] - Initializing MongoDB collections...
+2025-10-28 00:10:37 - EnhancedMemory - DEBUG - [_init_collections:80] - [OK] short_term collection indexes created
+2025-10-28 00:10:38 - EnhancedMemory - DEBUG - [_init_collections:94] - [OK] long_term collection indexes created
+2025-10-28 00:10:38 - EnhancedMemory - DEBUG - [_init_collections:100] - [OK] agent_cache collection indexes created
+2025-10-28 00:10:38 - EnhancedMemory - INFO - [_init_collections:102] - [OK] MongoDB collections initialized successfully
+2025-10-28 00:10:38 - EnhancedMemory - INFO - [get_short_term_memory_by_user:196] - [OK] Retrieved 0 short-term messages for user test_user
+2025-10-28 00:10:45 - EnhancedMemory - INFO - [commit_working_memory:157] - [OK] Stored 2 messages in short_term for conversation test_conv_001

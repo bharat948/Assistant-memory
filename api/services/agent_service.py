@@ -14,19 +14,11 @@ class AgentService:
     
     def __init__(self, db):
         self.apprepo_service = AppRepoService(AppRepoDAO(db))
+        self.db = db
         
-        # Initialize PostgreSQL-backed cache manager
-        postgres_dsn = os.getenv("POSTGRES_DSN")
-        if postgres_dsn:
-            try:
-                self.cache_manager = AgentCacheManager(postgres_dsn)
-                print("[AgentService] PostgreSQL cache manager initialized")
-            except Exception as e:
-                print(f"[AgentService] Warning: Could not initialize cache manager: {e}")
-                self.cache_manager = None
-        else:
-            print("[AgentService] Warning: POSTGRES_DSN not found, using in-memory cache only")
-            self.cache_manager = None
+        # Cache manager will be initialized lazily (async context needed)
+        self.cache_manager = None
+        self._cache_manager_init = False
 
     async def register_agent(self, agent_data: RegisterAgentRequest) -> AgentConfig:
         agent_dict = agent_data.dict()
@@ -34,19 +26,35 @@ class AgentService:
         created_agent = await self.apprepo_service.fetch_agent_by_id(agent_id=agent_data.agent_id)
         return created_agent
 
+    async def _get_cache_manager(self):
+        """Initialize cache manager lazily"""
+        if not self._cache_manager_init:
+            try:
+                # Create cache manager with MongoDB database
+                self.cache_manager = AgentCacheManager(self.db)
+                self._cache_manager_init = True
+                print("[AgentService] MongoDB cache manager initialized")
+            except Exception as e:
+                print(f"[AgentService] Warning: Could not initialize cache manager: {e}")
+                self.cache_manager = None
+                self._cache_manager_init = True
+    
     async def initialize_agent(self, agent_id: str) -> Agent:
         print("we are in initialize agent of agent service")
+        
+        # Initialize cache manager
+        await self._get_cache_manager()
         
         # Check local cache first (fast path)
         if agent_id in self._agent_cache:
             print(f"[AgentService] Agent {agent_id} found in local cache")
             # Update last accessed in database cache
             if self.cache_manager:
-                self.cache_manager.update_last_accessed(agent_id)
+                await self.cache_manager.update_last_accessed(agent_id)
             return self._agent_cache[agent_id]
         
         # Check database cache for cross-worker verification
-        if self.cache_manager and self.cache_manager.is_initialized(agent_id):
+        if self.cache_manager and await self.cache_manager.is_initialized(agent_id):
             print(f"[AgentService] Agent {agent_id} found in database cache, reinitializing locally")
             # Agent was initialized by another worker, reinitialize locally
             agent = await AgentInitializer.init_agent(agent_id=agent_id)
@@ -62,7 +70,7 @@ class AgentService:
         
         # Mark as initialized in database cache
         if self.cache_manager:
-            self.cache_manager.mark_initialized(agent_id)
+            await self.cache_manager.mark_initialized(agent_id)
         
         print(f"[AgentService] Agent {agent_id} initialized and cached successfully")
         
@@ -72,18 +80,21 @@ class AgentService:
                           user_id: str = "default_user", conversation_id: Optional[str] = None) -> Dict:
         """Invokes a cached agent with a given prompt and memory integration."""
         
+        # Initialize cache manager
+        await self._get_cache_manager()
+        
         # Check local cache first
         if agent_id in self._agent_cache:
             agent = self._agent_cache[agent_id]
             if agent:
                 # Update last accessed in database cache
                 if self.cache_manager:
-                    self.cache_manager.update_last_accessed(agent_id)
+                    await self.cache_manager.update_last_accessed(agent_id)
             else:
                 raise ValueError(f"Agent with ID '{agent_id}' failed to initialize.")
         else:
             # Check database cache for cross-worker scenarios
-            if self.cache_manager and self.cache_manager.is_initialized(agent_id):
+            if self.cache_manager and await self.cache_manager.is_initialized(agent_id):
                 print(f"[AgentService] Agent {agent_id} found in database cache, reinitializing for invoke")
                 # Reinitialize agent locally
                 agent = await AgentInitializer.init_agent(agent_id=agent_id)

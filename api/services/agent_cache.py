@@ -1,85 +1,50 @@
 """
-PostgreSQL-backed agent cache manager for multi-worker deployments.
+MongoDB-backed agent cache manager for multi-worker deployments.
 """
 import json
 import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
-import psycopg2
-from psycopg2 import pool
-from psycopg2.extras import DictCursor
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 
 class AgentCacheManager:
     """
-    Manages agent initialization state in PostgreSQL for multi-worker deployments.
-    Uses a simple flag-based approach rather than full serialization.
+    Manages agent initialization state in MongoDB for multi-worker deployments.
+    Uses a simple flag-based approach stored in the 'agentic' database.
     """
     
-    def __init__(self, db_dsn: str, pool_size: int = 5):
+    def __init__(self, db: AsyncIOMotorDatabase):
         """
-        Initialize the cache manager with PostgreSQL connection.
+        Initialize the cache manager with MongoDB connection.
         
         Args:
-            db_dsn: PostgreSQL connection string
-            pool_size: Connection pool size
+            db: MongoDB database instance
         """
-        self.db_dsn = db_dsn
-        self._pool = None
-        self._init_connection_pool(pool_size)
-        self._init_cache_table()
+        self.db = db
+        self._initialized = False
     
-    def _init_connection_pool(self, pool_size: int):
-        """Initialize PostgreSQL connection pool."""
+    async def _ensure_initialized(self):
+        """Ensure cache collection is initialized"""
+        if not self._initialized:
+            await self._init_cache_collection()
+            self._initialized = True
+    
+    async def _init_cache_collection(self):
+        """Initialize the agent_cache collection if it doesn't exist."""
         try:
-            self._pool = pool.ThreadedConnectionPool(
-                1, pool_size, dsn=self.db_dsn
-            )
-            print(f"[AgentCacheManager] Connection pool created (size: {pool_size})")
+            collection = self.db['agent_cache']
+            # Create indexes
+            await collection.create_index([("agent_id", 1)], unique=True)
+            await collection.create_index([("worker_id", 1)])
+            await collection.create_index([("last_accessed", -1)])
+            print("[AgentCacheManager] Cache collection initialized")
         except Exception as e:
-            print(f"[AgentCacheManager] Failed to create connection pool: {e}")
+            print(f"[AgentCacheManager] Failed to initialize cache collection: {e}")
             raise
     
-    def _init_cache_table(self):
-        """Initialize the agent_cache table if it doesn't exist."""
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute("""
-                    CREATE TABLE IF NOT EXISTS agent_cache (
-                        agent_id TEXT PRIMARY KEY,
-                        initialized_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        last_accessed TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        worker_id TEXT,
-                        metadata JSONB DEFAULT '{}'
-                    )
-                """)
-                
-                # Create index for performance
-                cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_agent_cache_worker 
-                    ON agent_cache(worker_id)
-                """)
-                
-                conn.commit()
-                print("[AgentCacheManager] Cache table initialized")
-            except Exception as e:
-                conn.rollback()
-                print(f"[AgentCacheManager] Failed to initialize cache table: {e}")
-                raise
-            finally:
-                cur.close()
-    
-    def _get_connection(self):
-        """Get a connection from the pool."""
-        return self._pool.getconn()
-    
-    def _return_connection(self, conn):
-        """Return a connection to the pool."""
-        self._pool.putconn(conn)
-    
-    def is_initialized(self, agent_id: str) -> bool:
+    async def is_initialized(self, agent_id: str) -> bool:
         """
         Check if an agent is marked as initialized in the database.
         
@@ -89,22 +54,18 @@ class AgentCacheManager:
         Returns:
             True if agent is initialized, False otherwise
         """
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute(
-                    "SELECT agent_id FROM agent_cache WHERE agent_id = %s",
-                    (agent_id,)
-                )
-                result = cur.fetchone()
-                return result is not None
-            except Exception as e:
-                print(f"[AgentCacheManager] Error checking initialization: {e}")
-                return False
-            finally:
-                cur.close()
+        await self._ensure_initialized()
+        
+        collection = self.db['agent_cache']
+        
+        try:
+            doc = await collection.find_one({"agent_id": agent_id})
+            return doc is not None
+        except Exception as e:
+            print(f"[AgentCacheManager] Error checking initialization: {e}")
+            return False
     
-    def mark_initialized(self, agent_id: str, worker_id: Optional[str] = None, 
+    async def mark_initialized(self, agent_id: str, worker_id: Optional[str] = None, 
                         metadata: Optional[Dict[str, Any]] = None) -> bool:
         """
         Mark an agent as initialized in the database.
@@ -123,35 +84,31 @@ class AgentCacheManager:
         if metadata is None:
             metadata = {}
         
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute("""
-                    INSERT INTO agent_cache (agent_id, initialized_at, last_accessed, worker_id, metadata)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (agent_id) DO UPDATE SET
-                        last_accessed = EXCLUDED.last_accessed,
-                        worker_id = EXCLUDED.worker_id,
-                        metadata = EXCLUDED.metadata
-                """, (
-                    agent_id,
-                    datetime.now(timezone.utc),
-                    datetime.now(timezone.utc),
-                    worker_id,
-                    json.dumps(metadata)
-                ))
-                
-                conn.commit()
-                print(f"[AgentCacheManager] Marked agent {agent_id} as initialized")
-                return True
-            except Exception as e:
-                conn.rollback()
-                print(f"[AgentCacheManager] Failed to mark agent as initialized: {e}")
-                return False
-            finally:
-                cur.close()
+        await self._ensure_initialized()
+        collection = self.db['agent_cache']
+        
+        try:
+            await collection.update_one(
+                {"agent_id": agent_id},
+                {
+                    "$set": {
+                        "agent_id": agent_id,
+                        "initialized_at": datetime.now(timezone.utc),
+                        "last_accessed": datetime.now(timezone.utc),
+                        "worker_id": worker_id,
+                        "metadata": metadata
+                    }
+                },
+                upsert=True
+            )
+            
+            print(f"[AgentCacheManager] Marked agent {agent_id} as initialized")
+            return True
+        except Exception as e:
+            print(f"[AgentCacheManager] Failed to mark agent as initialized: {e}")
+            return False
     
-    def update_last_accessed(self, agent_id: str) -> bool:
+    async def update_last_accessed(self, agent_id: str) -> bool:
         """
         Update the last accessed timestamp for an agent.
         
@@ -161,25 +118,20 @@ class AgentCacheManager:
         Returns:
             True if successful, False otherwise
         """
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute("""
-                    UPDATE agent_cache 
-                    SET last_accessed = %s 
-                    WHERE agent_id = %s
-                """, (datetime.now(timezone.utc), agent_id))
-                
-                conn.commit()
-                return cur.rowcount > 0
-            except Exception as e:
-                conn.rollback()
-                print(f"[AgentCacheManager] Failed to update last accessed: {e}")
-                return False
-            finally:
-                cur.close()
+        await self._ensure_initialized()
+        collection = self.db['agent_cache']
+        
+        try:
+            result = await collection.update_one(
+                {"agent_id": agent_id},
+                {"$set": {"last_accessed": datetime.now(timezone.utc)}}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"[AgentCacheManager] Failed to update last accessed: {e}")
+            return False
     
-    def get_cache_info(self, agent_id: str) -> Optional[Dict[str, Any]]:
+    async def get_cache_info(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """
         Get cache information for an agent.
         
@@ -189,26 +141,20 @@ class AgentCacheManager:
         Returns:
             Dictionary with cache info or None if not found
         """
-        with self._get_connection() as conn:
-            cur = conn.cursor(cursor_factory=DictCursor)
-            try:
-                cur.execute("""
-                    SELECT agent_id, initialized_at, last_accessed, worker_id, metadata
-                    FROM agent_cache 
-                    WHERE agent_id = %s
-                """, (agent_id,))
-                
-                result = cur.fetchone()
-                if result:
-                    return dict(result)
-                return None
-            except Exception as e:
-                print(f"[AgentCacheManager] Failed to get cache info: {e}")
-                return None
-            finally:
-                cur.close()
+        await self._ensure_initialized()
+        collection = self.db['agent_cache']
+        
+        try:
+            doc = await collection.find_one({"agent_id": agent_id})
+            if doc:
+                doc['_id'] = str(doc['_id'])
+                return doc
+            return None
+        except Exception as e:
+            print(f"[AgentCacheManager] Failed to get cache info: {e}")
+            return None
     
-    def clear_agent_cache(self, agent_id: str) -> bool:
+    async def clear_agent_cache(self, agent_id: str) -> bool:
         """
         Remove an agent from the cache.
         
@@ -218,41 +164,38 @@ class AgentCacheManager:
         Returns:
             True if successful, False otherwise
         """
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute("DELETE FROM agent_cache WHERE agent_id = %s", (agent_id,))
-                conn.commit()
-                success = cur.rowcount > 0
-                if success:
-                    print(f"[AgentCacheManager] Cleared cache for agent {agent_id}")
-                return success
-            except Exception as e:
-                conn.rollback()
-                print(f"[AgentCacheManager] Failed to clear cache: {e}")
-                return False
-            finally:
-                cur.close()
+        await self._ensure_initialized()
+        collection = self.db['agent_cache']
+        
+        try:
+            result = await collection.delete_one({"agent_id": agent_id})
+            success = result.deleted_count > 0
+            if success:
+                print(f"[AgentCacheManager] Cleared cache for agent {agent_id}")
+            return success
+        except Exception as e:
+            print(f"[AgentCacheManager] Failed to clear cache: {e}")
+            return False
     
-    def get_all_cached_agents(self) -> list:
+    async def get_all_cached_agents(self) -> list:
         """
         Get list of all cached agent IDs.
         
         Returns:
             List of agent IDs
         """
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute("SELECT agent_id FROM agent_cache ORDER BY last_accessed DESC")
-                return [row[0] for row in cur.fetchall()]
-            except Exception as e:
-                print(f"[AgentCacheManager] Failed to get cached agents: {e}")
-                return []
-            finally:
-                cur.close()
+        await self._ensure_initialized()
+        collection = self.db['agent_cache']
+        
+        try:
+            cursor = collection.find({}).sort("last_accessed", -1)
+            docs = await cursor.to_list(length=None)
+            return [doc['agent_id'] for doc in docs]
+        except Exception as e:
+            print(f"[AgentCacheManager] Failed to get cached agents: {e}")
+            return []
     
-    def cleanup_old_entries(self, hours: int = 24) -> int:
+    async def cleanup_old_entries(self, hours: int = 24) -> int:
         """
         Remove cache entries older than specified hours.
         
@@ -263,31 +206,18 @@ class AgentCacheManager:
             Number of entries removed
         """
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        await self._ensure_initialized()
+        collection = self.db['agent_cache']
         
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute("""
-                    DELETE FROM agent_cache 
-                    WHERE last_accessed < %s
-                """, (cutoff,))
-                
-                count = cur.rowcount
-                conn.commit()
-                
-                if count > 0:
-                    print(f"[AgentCacheManager] Cleaned up {count} old cache entries")
-                
-                return count
-            except Exception as e:
-                conn.rollback()
-                print(f"[AgentCacheManager] Failed to cleanup old entries: {e}")
-                return 0
-            finally:
-                cur.close()
-    
-    def close(self):
-        """Close the connection pool."""
-        if self._pool:
-            self._pool.closeall()
-            print("[AgentCacheManager] Connection pool closed")
+        try:
+            result = await collection.delete_many({"last_accessed": {"$lt": cutoff}})
+            count = result.deleted_count
+            
+            if count > 0:
+                print(f"[AgentCacheManager] Cleaned up {count} old cache entries")
+            
+            return count
+        except Exception as e:
+            print(f"[AgentCacheManager] Failed to cleanup old entries: {e}")
+            return 0
+

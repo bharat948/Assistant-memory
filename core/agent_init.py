@@ -28,10 +28,9 @@ class AgentInitializer:
         if not config:
             raise ValueError("Agent not found")
 
-        # Initialize EnhancedMemory (MongoDB version preferred)
+        # Initialize EnhancedMemory (MongoDB version - now default)
         memory = None
         try:
-            # Try MongoDB first (recommended)
             mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
             mongo_db_name = os.getenv("MONGO_DB_NAME", "agentic")
             
@@ -43,10 +42,8 @@ class AgentInitializer:
             # Initialize LLM client for memory
             llm_client = GroqLLMClient()  # You can switch to MockLLMClient for testing
             
-            # Use MongoDB EnhancedMemory (recommended)
-            from memory.mongodb_memory import MongoDBEnhancedMemory
-            
-            memory = MongoDBEnhancedMemory(
+            # Create MongoDB-backed EnhancedMemory
+            memory = EnhancedMemory(
                 mongo_uri=mongo_uri,
                 db_name=mongo_db_name,
                 llm_client=llm_client,

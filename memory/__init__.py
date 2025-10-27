@@ -58,11 +58,8 @@ from .tagging import (
     LLMTaggingPolicy
 )
 
-from .enhanced_memory import (
-    EnhancedMemory,
-    run_comprehensive_tests
-)
-from .mongodb_memory import MongoDBEnhancedMemory
+# MongoDB EnhancedMemory is now the only implementation
+from .mongodb_memory import MongoDBEnhancedMemory as EnhancedMemory
 
 # Re-export everything for backward compatibility
 __all__ = [
@@ -101,14 +98,12 @@ __all__ = [
     'LLMTaggingResponse',
     'LLMTaggingPolicy',
     
-    # Main Classes - PostgreSQL version
-    'EnhancedMemory',
-    # Main Classes - MongoDB version (recommended)
-    'MongoDBEnhancedMemory',
-    'run_comprehensive_tests'
+    # Main Classes
+    'EnhancedMemory',  # Now uses MongoDB backend
+    'MongoDBEnhancedMemory'  # Also available explicitly
 ]
 
 # Version information
-__version__ = "5.0.0"
+__version__ = "6.0.0"
 __author__ = "Enhanced Memory System"
-__description__ = "Comprehensive memory management with LLM integration and multi-agent support"
+__description__ = "Comprehensive memory management with LLM integration and MongoDB backend"
