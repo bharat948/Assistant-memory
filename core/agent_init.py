@@ -28,36 +28,40 @@ class AgentInitializer:
         if not config:
             raise ValueError("Agent not found")
 
-        # Initialize EnhancedMemory
+        # Initialize EnhancedMemory (MongoDB version preferred)
         memory = None
         try:
-            postgres_dsn = os.getenv("POSTGRES_DSN")
-            if postgres_dsn:
-                # Parse allowed tags and collections from environment
-                allowed_tags = json.loads(os.getenv("ALLOWED_TAGS", '["general", "work", "code"]'))
-                allowed_collections = json.loads(os.getenv("ALLOWED_COLLECTIONS", '["conversations", "general"]'))
-                working_memory_threshold = int(os.getenv("WORKING_MEMORY_THRESHOLD", "6"))
-                
-                # Initialize LLM client for memory
-                llm_client = GroqLLMClient()  # You can switch to MockLLMClient for testing
-                
-                # Create EnhancedMemory instance
-                memory = EnhancedMemory(
-                    db_dsn=postgres_dsn,
-                    llm_client=llm_client,
-                    working_memory_threshold=working_memory_threshold
-                )
-                
-                # Register agent permissions
-                memory.register_agent_permissions(
-                    agent_id=agent_id,
-                    allowed_tags=allowed_tags,
-                    allowed_collections=allowed_collections
-                )
-                
-                print(f"[AgentInitializer] Memory initialized for agent {agent_id}")
-            else:
-                print("[AgentInitializer] Warning: POSTGRES_DSN not found, memory disabled")
+            # Try MongoDB first (recommended)
+            mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+            mongo_db_name = os.getenv("MONGO_DB_NAME", "agentic")
+            
+            # Parse allowed tags and collections from environment
+            allowed_tags = json.loads(os.getenv("ALLOWED_TAGS", '["general", "work", "code"]'))
+            allowed_collections = json.loads(os.getenv("ALLOWED_COLLECTIONS", '["conversations", "general"]'))
+            working_memory_threshold = int(os.getenv("WORKING_MEMORY_THRESHOLD", "6"))
+            
+            # Initialize LLM client for memory
+            llm_client = GroqLLMClient()  # You can switch to MockLLMClient for testing
+            
+            # Use MongoDB EnhancedMemory (recommended)
+            from memory.mongodb_memory import MongoDBEnhancedMemory
+            
+            memory = MongoDBEnhancedMemory(
+                mongo_uri=mongo_uri,
+                db_name=mongo_db_name,
+                llm_client=llm_client,
+                working_memory_threshold=working_memory_threshold
+            )
+            
+            # Register agent permissions
+            memory.register_agent_permissions(
+                agent_id=agent_id,
+                allowed_tags=allowed_tags,
+                allowed_collections=allowed_collections
+            )
+            
+            print(f"[AgentInitializer] Memory initialized for agent {agent_id} using MongoDB")
+            
         except Exception as e:
             print(f"[AgentInitializer] Warning: Could not initialize memory: {e}")
 

@@ -62,6 +62,7 @@ from .enhanced_memory import (
     EnhancedMemory,
     run_comprehensive_tests
 )
+from .mongodb_memory import MongoDBEnhancedMemory
 
 # Re-export everything for backward compatibility
 __all__ = [
@@ -100,8 +101,10 @@ __all__ = [
     'LLMTaggingResponse',
     'LLMTaggingPolicy',
     
-    # Main Classes
+    # Main Classes - PostgreSQL version
     'EnhancedMemory',
+    # Main Classes - MongoDB version (recommended)
+    'MongoDBEnhancedMemory',
     'run_comprehensive_tests'
 ]
 
