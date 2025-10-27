@@ -58,3 +58,64 @@
 2025-10-24 11:49:42 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation string
 2025-10-24 11:50:17 - EnhancedMemory - INFO - [get_short_term_memory_by_user:266] - [OK] Retrieved 2 short-term messages for user default_user
 2025-10-24 11:50:19 - EnhancedMemory - INFO - [commit_working_memory:221] - [OK] Stored 2 messages in short_term_memory for conversation string
+2025-10-28 00:00:46 - EnhancedMemory.LLM - INFO - [__init__:96] - MockLLMClient initialized
+2025-10-28 00:00:46 - EnhancedMemory.LLM - INFO - [__init__:96] - MockLLMClient initialized
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [__init__:39] - ======================================================================
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [__init__:40] - Initializing MongoDB Enhanced Memory System v6.0
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [__init__:41] - ======================================================================
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [__init__:52] - [OK] Connected to MongoDB database: Agents
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [__init__:68] - [OK] MongoDB Enhanced Memory System initialized successfully
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [register_agent_permissions:353] - >>> REGISTERING PERMISSIONS for agent: test_agent
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [register_agent_permissions:354] -     Allowed collections: {'test', 'general', 'conversations'}
+2025-10-28 00:00:46 - EnhancedMemory - INFO - [register_agent_permissions:355] -     Allowed tags: 4 tags
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [commit_working_memory:149] - [OK] Stored 2 messages in short_term for conversation conv_test_001
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [get_short_term_memory_by_user:187] - [OK] Retrieved 2 short-term messages for user test_user
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [commit_working_memory:149] - [OK] Stored 2 messages in short_term for conversation conv_test_002
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [get_statistics:384] - >>> GENERATING STATISTICS
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [get_statistics:403] -   Short-term messages: 4
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [get_statistics:404] -   Total chunks: 0
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [clear_short_term_memory_by_user:202] - [OK] Cleared 4 short-term messages for user test_user
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:429] - >>> CLOSING MONGODB ENHANCED MEMORY SYSTEM
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:433] - [OK] MongoDB connection closed
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:436] - ======================================================================
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:437] - SESSION STATISTICS
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:438] - ======================================================================
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:440] - chunks_stored................. 0
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:440] - chunks_retrieved.............. 0
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:440] - chunks_consolidated........... 0
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:440] - llm_calls..................... 0
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:440] - llm_failures.................. 0
+2025-10-28 00:00:47 - EnhancedMemory - INFO - [close:441] - ======================================================================
+2025-10-28 00:01:09 - EnhancedMemory.LLM - INFO - [__init__:96] - MockLLMClient initialized
+2025-10-28 00:01:09 - EnhancedMemory.LLM - INFO - [__init__:96] - MockLLMClient initialized
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [__init__:39] - ======================================================================
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [__init__:40] - Initializing MongoDB Enhanced Memory System v6.0
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [__init__:41] - ======================================================================
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [__init__:52] - [OK] Connected to MongoDB database: Agents
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [__init__:67] - [OK] MongoDB Enhanced Memory System initialized successfully
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [register_agent_permissions:364] - >>> REGISTERING PERMISSIONS for agent: test_agent
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [register_agent_permissions:365] -     Allowed collections: {'test', 'conversations', 'general'}
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [register_agent_permissions:366] -     Allowed tags: 4 tags
+2025-10-28 00:01:09 - EnhancedMemory - INFO - [_init_collections:71] - Initializing MongoDB collections...
+2025-10-28 00:01:10 - EnhancedMemory - DEBUG - [_init_collections:80] - [OK] short_term collection indexes created
+2025-10-28 00:01:11 - EnhancedMemory - DEBUG - [_init_collections:94] - [OK] long_term collection indexes created
+2025-10-28 00:01:11 - EnhancedMemory - DEBUG - [_init_collections:100] - [OK] agent_cache collection indexes created
+2025-10-28 00:01:11 - EnhancedMemory - INFO - [_init_collections:102] - [OK] MongoDB collections initialized successfully
+2025-10-28 00:01:11 - EnhancedMemory - INFO - [commit_working_memory:157] - [OK] Stored 2 messages in short_term for conversation conv_test_001
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [get_short_term_memory_by_user:196] - [OK] Retrieved 2 short-term messages for user test_user
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [commit_working_memory:157] - [OK] Stored 2 messages in short_term for conversation conv_test_002
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [get_statistics:396] - >>> GENERATING STATISTICS
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [get_statistics:415] -   Short-term messages: 4
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [get_statistics:416] -   Total chunks: 0
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [clear_short_term_memory_by_user:212] - [OK] Cleared 4 short-term messages for user test_user
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:441] - >>> CLOSING MONGODB ENHANCED MEMORY SYSTEM
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:445] - [OK] MongoDB connection closed
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:448] - ======================================================================
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:449] - SESSION STATISTICS
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:450] - ======================================================================
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:452] - chunks_stored................. 0
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:452] - chunks_retrieved.............. 0
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:452] - chunks_consolidated........... 0
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:452] - llm_calls..................... 0
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:452] - llm_failures.................. 0
+2025-10-28 00:01:12 - EnhancedMemory - INFO - [close:453] - ======================================================================

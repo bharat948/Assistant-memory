@@ -54,8 +54,7 @@ class MongoDBEnhancedMemory:
             logger.critical(f"Failed to connect to MongoDB: {e}")
             raise
         
-        # Initialize collections
-        self._init_collections()
+        # Collections will be initialized on first access (lazy initialization)
         
         self._stats = {
             'chunks_stored': 0,
@@ -106,6 +105,12 @@ class MongoDBEnhancedMemory:
             logger.error(f"Failed to initialize collections: {e}")
             raise
 
+    async def _ensure_collections_initialized(self):
+        """Ensure collections are initialized (lazy init)"""
+        if not hasattr(self, '_collections_initialized'):
+            await self._init_collections()
+            self._collections_initialized = True
+    
     async def commit_working_memory(
         self, 
         chat: ChatHistoryChunk, 
@@ -113,6 +118,9 @@ class MongoDBEnhancedMemory:
         context_handle: ContextualHandle = None
     ):
         """Store ChatHistoryChunk messages in short_term collection"""
+        
+        # Ensure collections are initialized
+        await self._ensure_collections_initialized()
         
         # Use agent_sender as agent_id if not provided
         if agent_id is None:
@@ -158,6 +166,7 @@ class MongoDBEnhancedMemory:
     ) -> List[Dict[str, Any]]:
         """Retrieve short-term memory messages for a specific user"""
         
+        await self._ensure_collections_initialized()
         collection = self.db['short_term']
         
         # Build query
@@ -190,6 +199,7 @@ class MongoDBEnhancedMemory:
     async def clear_short_term_memory_by_user(self, user_id: str, agent_id: str = None) -> int:
         """Clear short-term memory messages for a specific user"""
         
+        await self._ensure_collections_initialized()
         collection = self.db['short_term']
         
         query = {"user_id": user_id}
@@ -205,6 +215,7 @@ class MongoDBEnhancedMemory:
     async def get_short_term_memory_count(self, user_id: str, agent_id: str = None) -> int:
         """Get the count of short-term memory messages for a specific user"""
         
+        await self._ensure_collections_initialized()
         collection = self.db['short_term']
         
         query = {"user_id": user_id}
@@ -381,6 +392,7 @@ class MongoDBEnhancedMemory:
     async def get_statistics(self) -> Dict[str, Any]:
         """Get comprehensive memory statistics"""
         
+        await self._ensure_collections_initialized()
         logger.info(">>> GENERATING STATISTICS")
         
         stats = {}
