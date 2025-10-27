@@ -3,8 +3,8 @@ MCP Server API endpoints.
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
-from ...core.agent_service import AgentService
-from ...core.agent_cache import get_agent_service
+from api.services.agent_service import AgentService
+from api.services.agent_cache import get_agent_service
 
 router = APIRouter(prefix="/mcp", tags=["MCP Servers"])
 

@@ -1,4 +1,4 @@
-from mongo_service.config import get_database
+from storage.config import get_database
 from fastapi import Depends
 
 async def get_db(db = Depends(get_database)):

@@ -8,8 +8,8 @@ import os
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from agent_core.agent_init import AgentInitializer
-from mcp_server_module import mcp_loader
+from core.agent_init import AgentInitializer
+from mcp import mcp_loader
 
 async def test_mcp_servers():
     """Test MCP server functionality."""

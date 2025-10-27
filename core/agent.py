@@ -8,11 +8,11 @@ from langchain_core.prompts.chat import (
 )
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
-from python_tool_module.tools.base import BaseTool
+from tools.tools.base import BaseTool
 from langchain.agents import AgentExecutor
-from python_tool_module.services.tool_loader import tool_loader
+from tools.services.tool_loader import tool_loader
 from langchain import hub
-from memory_module import EnhancedMemory, ContextualHandle, ChatHistoryChunk
+from memory import EnhancedMemory, ContextualHandle, ChatHistoryChunk
 
 class Agent:
     def __init__(

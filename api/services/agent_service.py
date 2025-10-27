@@ -1,11 +1,11 @@
 from typing import List, Dict, Optional
-from mongo_service.AppRepo.service import AppRepoService
-from mongo_service.AppRepo.apprepo import AppRepoDAO
-from agent_service.app.api.models.agent import RegisterAgentRequest
-from agent_core.agent_init import AgentInitializer
-from agent_core.agent import Agent
-from mongo_service.AppRepo.models import AgentConfig
-from agent_service.app.core.agent_cache import AgentCacheManager
+from storage.agent_repo.service import AppRepoService
+from storage.agent_repo.apprepo import AppRepoDAO
+from api.models.agent import RegisterAgentRequest
+from core.agent_init import AgentInitializer
+from core.agent import Agent
+from storage.agent_repo.models import AgentConfig
+from api.services.agent_cache import AgentCacheManager
 import os
 
 class AgentService:

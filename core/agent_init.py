@@ -1,13 +1,13 @@
 
-from mongo_service.AppRepo.apprepo import AppRepoDAO
-from mongo_service.AppRepo.service import AppRepoService
-from agent_core.agent import Agent
-from mongo_service.config import get_database
+from storage.agent_repo.apprepo import AppRepoDAO
+from storage.agent_repo.service import AppRepoService
+from core.agent import Agent
+from storage.config import get_database
 from typing import Dict, Any, Optional
 import os
 import json
 from dotenv import load_dotenv
-from memory_module import EnhancedMemory, GroqLLMClient, MockLLMClient
+from memory import EnhancedMemory, GroqLLMClient, MockLLMClient
 
 class AgentInitializer:
     @staticmethod

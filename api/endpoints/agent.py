@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
-from agent_service.app.core.agent_service import AgentService
-from agent_service.app.api.models.agent import (
+from api.services.agent_service import AgentService
+from api.models.agent import (
     RegisterAgentRequest,
     AgentResponse,
     InitializeAgentResponse,
@@ -9,7 +9,7 @@ from agent_service.app.api.models.agent import (
     InvokeAgentResponse,
     ListAgentsResponse,
 )
-from agent_service.dependencies import get_db
+from api.dependencies import get_db
 
 router = APIRouter()
 
